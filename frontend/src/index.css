@@ -1,1 +1,15 @@
 @import "tailwindcss";
+
+/* Optional global custom styles */
+body {
+  @apply bg-gray-50 text-gray-800;
+}
+
+/* Example custom scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+}
+::-webkit-scrollbar-thumb {
+  background-color: rgba(100, 100, 100, 0.3);
+  border-radius: 9999px;
+}
