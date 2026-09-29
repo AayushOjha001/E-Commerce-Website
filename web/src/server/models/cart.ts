@@ -50,6 +50,18 @@ const cartSchema = new Schema<Cart>(
     items: {
       type: [cartItemSchema],
       default: [],
+      // One line per product is an invariant the cart service relies on: it
+      // looks a product up with `items.find()`, which only ever sees the first
+      // match, so a duplicated product would make the stock guard reason about
+      // one line while the cart actually holds more. Enforced here so the
+      // invariant cannot drift away from the code that assumes it.
+      validate: {
+        validator: (items: CartItem[]) => {
+          const ids = items.map((item) => String(item.product));
+          return new Set(ids).size === ids.length;
+        },
+        message: "A cart cannot contain the same product twice",
+      },
     },
   },
   // The legacy schema wrote `{ timestamp: true }` (singular), which Mongoose

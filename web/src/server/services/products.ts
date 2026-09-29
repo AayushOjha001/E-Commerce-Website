@@ -3,7 +3,7 @@ import { Types } from "mongoose";
 
 import { connectDB } from "@/server/db/connect";
 import { CategoryModel, ProductModel, type Product } from "@/server/models";
-import { notFound } from "./errors";
+import { notFound, validationFailed } from "./errors";
 
 export const PRODUCT_SORTS = [
   "newest",
@@ -45,14 +45,64 @@ export type Paginated<T> = {
   hasNext: boolean;
 };
 
-/** Clamps paging input, so a hostile `?limit=1000000` cannot exhaust memory. */
+/**
+ * Clamps paging input, so a hostile `?limit=1000000` cannot exhaust memory.
+ *
+ * The `Number.isFinite` guard is load-bearing, not defensive noise: `NaN`
+ * survives `Math.trunc`, `Math.min` and `Math.max` unchanged, and Mongo treats
+ * `.limit(NaN)` as *no limit at all* — so without it the clamp silently inverts
+ * into "return the whole collection". A route handler doing
+ * `Number(searchParams.get("limit"))` produces exactly that from `?limit=abc`.
+ */
 function normalisePaging(options: ListProductsOptions) {
-  const limit = Math.min(
-    Math.max(Math.trunc(options.limit ?? DEFAULT_PAGE_SIZE), 1),
-    MAX_PAGE_SIZE,
-  );
-  const page = Math.max(Math.trunc(options.page ?? 1), 1);
+  const rawLimit = options.limit;
+  const rawPage = options.page;
+
+  const limit = Number.isFinite(rawLimit)
+    ? Math.min(Math.max(Math.trunc(rawLimit as number), 1), MAX_PAGE_SIZE)
+    : DEFAULT_PAGE_SIZE;
+
+  const page = Number.isFinite(rawPage)
+    ? Math.max(Math.trunc(rawPage as number), 1)
+    : 1;
+
   return { page, limit };
+}
+
+/**
+ * Validates the price range before it reaches Mongo.
+ *
+ * An unfinite bound raises a raw Mongoose `CastError`, which is not a
+ * `ServiceError` and would surface as a 500 with driver internals in it — the
+ * class of leak audit B6 was about.
+ */
+function normalisePriceRange(options: ListProductsOptions) {
+  const { minPrice, maxPrice } = options;
+
+  for (const [field, value] of [
+    ["minPrice", minPrice],
+    ["maxPrice", maxPrice],
+  ] as const) {
+    if (value === undefined) continue;
+    if (!Number.isFinite(value)) {
+      throw validationFailed(`${field} must be a number`, { [field]: "number" });
+    }
+    if (value < 0) {
+      throw validationFailed(`${field} cannot be negative`, { [field]: "min" });
+    }
+  }
+
+  if (
+    minPrice !== undefined &&
+    maxPrice !== undefined &&
+    minPrice > maxPrice
+  ) {
+    throw validationFailed("minPrice cannot be greater than maxPrice", {
+      minPrice: "range",
+    });
+  }
+
+  return { minPrice, maxPrice };
 }
 
 function sortSpec(
@@ -94,7 +144,10 @@ export async function listProducts(
 ): Promise<Paginated<ProductListItem>> {
   await connectDB();
 
+  // Validate before anything queries or returns early, so a bad price range is
+  // always reported rather than being masked by, say, an unknown category slug.
   const { page, limit } = normalisePaging(options);
+  const { minPrice, maxPrice } = normalisePriceRange(options);
   const search = options.search?.trim();
   const filter: QueryFilter<Product> = {};
 
@@ -129,10 +182,10 @@ export async function listProducts(
     filter.category = category._id;
   }
 
-  if (options.minPrice !== undefined || options.maxPrice !== undefined) {
+  if (minPrice !== undefined || maxPrice !== undefined) {
     const price: Record<string, number> = {};
-    if (options.minPrice !== undefined) price.$gte = options.minPrice;
-    if (options.maxPrice !== undefined) price.$lte = options.maxPrice;
+    if (minPrice !== undefined) price.$gte = minPrice;
+    if (maxPrice !== undefined) price.$lte = maxPrice;
     filter.price = price;
   }
 

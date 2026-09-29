@@ -27,13 +27,13 @@ export async function listCategoriesWithCounts(): Promise<CategoryWithCount[]> {
     ]),
   ]);
 
-  const countBySlug = new Map(
+  const countByCategoryId = new Map(
     counts.map((row) => [String(row._id), row.count]),
   );
 
   return categories.map((category) => ({
     ...category,
-    productCount: countBySlug.get(String(category._id)) ?? 0,
+    productCount: countByCategoryId.get(String(category._id)) ?? 0,
   }));
 }
 

@@ -331,6 +331,8 @@ describe.skipIf(!dbReachable)("cart service", () => {
     it("empties the cart but keeps the cart document", async () => {
       await addToCart(userId, widgetId, 2);
 
+      // clearCart reads back from the database rather than returning a constant,
+      // so this assertion actually exercises the write.
       await expect(clearCart(userId).then((c) => c.items)).resolves.toEqual([]);
       await expect(getCart(userId).then((c) => c.itemCount)).resolves.toBe(0);
       await expect(CartModel.countDocuments({ user: userId })).resolves.toBe(1);
@@ -338,6 +340,46 @@ describe.skipIf(!dbReachable)("cart service", () => {
 
     it("is safe when there is no cart", async () => {
       await expect(clearCart(userId)).resolves.toMatchObject({ items: [] });
+    });
+  });
+
+  describe("input guards", () => {
+    it("rejects a malformed user id consistently across every mutator", async () => {
+      // These used to let a bad id reach Mongoose and throw a raw CastError,
+      // while getCart returned an empty cart - two contracts for one input.
+      for (const call of [
+        () => addToCart("garbage", widgetId, 1),
+        () => setCartItemQty("garbage", widgetId, 1),
+        () => removeFromCart("garbage", widgetId),
+        () => clearCart("garbage"),
+      ]) {
+        await expect(call()).rejects.toMatchObject({ code: "not_found" });
+      }
+    });
+
+    it("never surfaces a raw Mongoose CastError", async () => {
+      await expect(addToCart("garbage", widgetId, 1)).rejects.not.toThrow(
+        /CastError/,
+      );
+    });
+  });
+
+  describe("one line per product invariant", () => {
+    it("is enforced by the schema, so the stock guard cannot be fooled", async () => {
+      // addToCart looks an item up with items.find(), which only sees the first
+      // match, so a duplicated product would let the guard reason about one line
+      // while the cart held more.
+      const user = await UserModel.findOne({ email: "ada@example.com" });
+
+      await expect(
+        CartModel.create({
+          user: user!._id,
+          items: [
+            { product: widgetId, qty: 3 },
+            { product: widgetId, qty: 3 },
+          ],
+        }),
+      ).rejects.toThrow(/same product twice/i);
     });
   });
 

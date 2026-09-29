@@ -42,6 +42,18 @@ const EMPTY_CART: CartView = {
   hasIssues: false,
 };
 
+/**
+ * Validates a user id.
+ *
+ * Every entry point goes through this so they agree on the contract. Previously
+ * only getCart checked, and the mutators let a malformed id reach Mongoose,
+ * which threw a raw `CastError` — not a ServiceError, so it would have surfaced
+ * as a 500 with driver internals in it (the class of leak audit B6 was about).
+ */
+function assertValidUserId(userId: string): void {
+  if (!Types.ObjectId.isValid(userId)) throw notFound("User");
+}
+
 function assertValidQty(qty: number): void {
   if (!Number.isInteger(qty)) {
     throw validationFailed("Quantity must be a whole number", { qty: "integer" });
@@ -126,6 +138,7 @@ export async function addToCart(
   qty = 1,
 ): Promise<CartView> {
   await connectDB();
+  assertValidUserId(userId);
   assertValidQty(qty);
 
   const product = await requirePurchasableProduct(productId);
@@ -168,6 +181,7 @@ export async function setCartItemQty(
   qty: number,
 ): Promise<CartView> {
   await connectDB();
+  assertValidUserId(userId);
   assertValidQty(qty);
 
   const product = await requirePurchasableProduct(productId);
@@ -195,6 +209,7 @@ export async function removeFromCart(
   productId: string,
 ): Promise<CartView> {
   await connectDB();
+  assertValidUserId(userId);
 
   if (!Types.ObjectId.isValid(productId)) throw notFound("Product");
 
@@ -211,11 +226,12 @@ export async function removeFromCart(
 
 export async function clearCart(userId: string): Promise<CartView> {
   await connectDB();
+  assertValidUserId(userId);
 
-  await CartModel.findOneAndUpdate(
-    { user: userId },
-    { $set: { items: [] } },
-  );
+  await CartModel.findOneAndUpdate({ user: userId }, { $set: { items: [] } });
 
-  return EMPTY_CART;
+  // Reads back rather than returning a hardcoded EMPTY_CART, so the return value
+  // reflects what is actually stored. A hardcoded value would let a failed or
+  // no-op write still report an empty cart.
+  return getCart(userId);
 }

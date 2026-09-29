@@ -7,7 +7,26 @@ import {
   type UserDocument,
   type UserRole,
 } from "@/server/models";
-import { conflict, notFound } from "./errors";
+import { conflict, notFound, validationFailed } from "./errors";
+
+/**
+ * Minimum password length, enforced in the service rather than the schema.
+ *
+ * It cannot live on the Mongoose path: the pre-save hook replaces the value with
+ * a 60-character bcrypt hash, so a `minlength` there would only ever measure the
+ * hash and pass unconditionally. T3.2 adds zod validation at the HTTP edge; this
+ * is the backstop for server actions and scripts that call the service directly.
+ */
+export const MIN_PASSWORD_LENGTH = 8;
+
+function assertPasswordStrength(password: string): void {
+  if (password.length < MIN_PASSWORD_LENGTH) {
+    throw validationFailed(
+      `Password must be at least ${MIN_PASSWORD_LENGTH} characters`,
+      { password: "min" },
+    );
+  }
+}
 
 /**
  * A user as it may safely cross a trust boundary.
@@ -42,14 +61,33 @@ export type CreateUserInput = {
 };
 
 /**
- * Creates a user, rejecting a duplicate email.
+ * Registers a customer. **This is what the public registration endpoint calls.**
  *
- * Checks first for a friendly message, then relies on the unique index to settle
- * the race if two requests arrive at once — the check alone is not atomic.
+ * Separate from `createUser` precisely because it cannot set a role: a handler
+ * that spreads a parsed request body into `createUser` would hand the caller
+ * `role: "admin"` and self-elevation. The type makes that impossible here rather
+ * than relying on the handler to remember to strip the field.
+ */
+export async function registerCustomer(
+  input: Omit<CreateUserInput, "role">,
+): Promise<PublicUser> {
+  return createUser({ ...input, role: "customer" });
+}
+
+/**
+ * Creates a user with an explicit role.
+ *
+ * Privileged: only the seed script and the Batch 6 admin surface should call
+ * this. Public registration goes through `registerCustomer`.
+ *
+ * Checks for a duplicate email first for a friendly message, then relies on the
+ * unique index to settle the race if two requests arrive at once — the check
+ * alone is not atomic.
  */
 export async function createUser(input: CreateUserInput): Promise<PublicUser> {
   await connectDB();
 
+  assertPasswordStrength(input.password);
   const email = input.email.trim().toLowerCase();
   if (await UserModel.exists({ email })) {
     throw conflict("An account with that email already exists");
@@ -147,7 +185,10 @@ export async function updateUserProfile(
     user.email = email;
   }
 
-  if (input.password !== undefined) user.password = input.password;
+  if (input.password !== undefined) {
+    assertPasswordStrength(input.password);
+    user.password = input.password;
+  }
 
   try {
     await user.save();

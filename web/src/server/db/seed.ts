@@ -7,6 +7,7 @@ import {
   syncAllIndexes,
 } from "@/server/models";
 import { connectDB } from "@/server/db/connect";
+import { env } from "@/lib/env";
 import {
   SEED_CATEGORIES,
   SEED_PRODUCTS,
@@ -35,21 +36,39 @@ export type SeedOptions = {
   quiet?: boolean;
 };
 
+/** Hosts a dev database is allowed to live on. */
+const LOCAL_HOSTS = new Set(["localhost", "127.0.0.1", "::1", "mongo"]);
+
 /**
- * Refuses to run against a production database.
+ * Refuses to seed anything that is not plainly a local database.
  *
- * Seeding creates accounts with a known, published password, so running it
- * anywhere real would hand out valid logins. `ALLOW_PRODUCTION_SEED=1` is the
- * deliberate escape hatch.
+ * Checks the **target host**, not `NODE_ENV`. Keying on NODE_ENV was close to
+ * useless here: `tsx` does not set it, so for the documented invocation
+ * (`npm run seed`) it is `undefined` and the guard never fired. Meanwhile the
+ * realistic accident is not a stray NODE_ENV but a `.env.local` or shell
+ * `MONGODB_URI` pointing at a shared or remote cluster — which would seed
+ * `admin@example.com` with a published password **and the admin role** into it.
+ *
+ * `ALLOW_REMOTE_SEED=1` is the deliberate escape hatch.
  */
-function assertNotProduction(): void {
-  if (
-    process.env.NODE_ENV === "production" &&
-    process.env.ALLOW_PRODUCTION_SEED !== "1"
-  ) {
+function assertLocalTarget(uri: string): void {
+  if (process.env.ALLOW_REMOTE_SEED === "1") return;
+
+  let host: string;
+  try {
+    host = new URL(uri).hostname;
+  } catch {
+    throw new Error(`Refusing to seed: MONGODB_URI is not a parseable URI`);
+  }
+
+  // `mongodb+srv://` always denotes a hosted cluster.
+  const isSrv = uri.startsWith("mongodb+srv://");
+
+  if (isSrv || !LOCAL_HOSTS.has(host)) {
     throw new Error(
-      "Refusing to seed with NODE_ENV=production: this creates accounts with a " +
-        "known password. Set ALLOW_PRODUCTION_SEED=1 only if you are certain.",
+      `Refusing to seed a non-local database (host: ${host || "unknown"}). ` +
+        "Seeding creates accounts with a published password and an admin role. " +
+        "Set ALLOW_REMOTE_SEED=1 only if you are certain this is a throwaway database.",
     );
   }
 }
@@ -62,7 +81,7 @@ function assertNotProduction(): void {
  * same data instead of duplicating it.
  */
 export async function seed(options: SeedOptions = {}): Promise<SeedResult> {
-  assertNotProduction();
+  assertLocalTarget(env().MONGODB_URI);
 
   const log = options.quiet ? () => {} : console.log;
 
@@ -130,6 +149,7 @@ export async function seed(options: SeedOptions = {}): Promise<SeedResult> {
     },
   ];
 
+  let passwordsReset = 0;
   for (const user of users) {
     // Not an upsert: the password must go through the document's pre-save hook
     // to be hashed. findOneAndUpdate bypasses it and would store plaintext.
@@ -138,13 +158,32 @@ export async function seed(options: SeedOptions = {}): Promise<SeedResult> {
     if (existing) {
       existing.name = user.name;
       existing.role = user.role;
-      existing.password = password;
+      // The password is deliberately NOT reset on every run: that would discard
+      // a password the developer changed locally, and re-hashing with a fresh
+      // salt each time means the stored state never actually settles, which is
+      // at odds with this script being idempotent. Opt in with
+      // SEED_RESET_PASSWORDS=1.
+      if (process.env.SEED_RESET_PASSWORDS === "1") {
+        existing.password = password;
+        passwordsReset += 1;
+      }
       await existing.save();
     } else {
       await UserModel.create({ ...user, password });
+      passwordsReset += 1;
     }
   }
-  log(`Seeded ${users.length} users (password: ${password}).`);
+
+  // Only ever names the built-in default. An operator-supplied SEED_PASSWORD is
+  // not echoed, since this output lands in terminal scrollback and CI logs.
+  const shown =
+    password === DEFAULT_SEED_PASSWORD ? password : "(from SEED_PASSWORD)";
+  log(
+    `Seeded ${users.length} users.` +
+      (passwordsReset > 0
+        ? ` Set the password on ${passwordsReset} of them: ${shown}.`
+        : " Existing passwords left unchanged (SEED_RESET_PASSWORDS=1 to reset)."),
+  );
 
   return {
     categories: SEED_CATEGORIES.length,

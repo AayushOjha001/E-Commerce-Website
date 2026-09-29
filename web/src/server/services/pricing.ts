@@ -59,7 +59,13 @@ export function calculateOrderTotals(
   };
 }
 
-/** Whether an order qualifies for free shipping, for display in the UI. */
+/**
+ * Whether a subtotal qualifies for free shipping, for display in the UI.
+ *
+ * Describes a non-empty cart. An empty order also ships free per
+ * `calculateOrderTotals`, but that is a "nothing to ship" case, not a perk to
+ * advertise, and an empty cart cannot reach checkout anyway.
+ */
 export function qualifiesForFreeShipping(subtotal: number): boolean {
   return roundMoney(subtotal) >= FREE_SHIPPING_THRESHOLD;
 }

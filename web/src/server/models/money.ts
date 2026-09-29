@@ -7,7 +7,17 @@
  * `0.1 + 0.2 !== 0.3` — and an order total that is a cent off is a real bug.
  */
 
-/** Rounds to 2 decimals, half-up, avoiding the float error in `x.toFixed()`. */
+/**
+ * Rounds to 2 decimals.
+ *
+ * The `Number.EPSILON` nudge compensates for the usual binary-representation
+ * error, so a value that "looks like" a midpoint (1.005) rounds up rather than
+ * down. It is not a decimal-exact half-up: EPSILON is a fixed absolute amount,
+ * so at larger magnitudes it sits far below the unit in the last place and has
+ * no effect (4999.995 rounds down). The worst case is one cent on a single
+ * value, and it does not accumulate, because all real arithmetic goes through
+ * `toCents`/`fromCents` and stays in integers.
+ */
 export function roundMoney(value: number): number {
   if (!Number.isFinite(value)) return 0;
   return Math.round((value + Number.EPSILON) * 100) / 100;

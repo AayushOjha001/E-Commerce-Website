@@ -270,6 +270,34 @@ describe.skipIf(!dbReachable)("orders service", () => {
       await expect(OrderModel.countDocuments()).resolves.toBe(1);
     });
 
+    it("creates only one order when the SAME user double-submits", async () => {
+      // The likelier real-world race: one customer double-clicking "Place
+      // order". Correctness rests on the cart being emptied inside the
+      // transaction; a refactor that moved that outside would silently allow
+      // two orders with nothing else failing.
+      await ProductModel.findByIdAndUpdate(widgetId, { countInStock: 10 });
+      await addToCart(userId, widgetId, 2);
+
+      const results = await Promise.allSettled([
+        createOrderFromCart(userId, {
+          shippingAddress: SHIPPING,
+          paymentMethod: "mock",
+        }),
+        createOrderFromCart(userId, {
+          shippingAddress: SHIPPING,
+          paymentMethod: "mock",
+        }),
+      ]);
+
+      expect(results.filter((r) => r.status === "fulfilled")).toHaveLength(1);
+      await expect(OrderModel.countDocuments()).resolves.toBe(1);
+
+      // Stock must be decremented exactly once, not twice.
+      const widget = await ProductModel.findById(widgetId);
+      expect(widget!.countInStock).toBe(8);
+      await expect(getCart(userId).then((c) => c.itemCount)).resolves.toBe(0);
+    });
+
     it("throws not_found for a malformed user id", async () => {
       await expect(
         createOrderFromCart("garbage", {

@@ -249,12 +249,63 @@ describe.skipIf(!dbReachable)("products service", () => {
     });
 
     it("combines search with a category filter", async () => {
-      const result = await listProducts({
-        search: "Soniq",
-        category: "audio",
-      });
+      // Discriminating case: "Soniq" alone matches 2, both in audio. Asking for
+      // Soniq *in computers* must be 0 — a test that only checked the audio
+      // combination would pass even with the category filter dropped.
+      await expect(
+        listProducts({ search: "Soniq", category: "computers" }).then(
+          (r) => r.total,
+        ),
+      ).resolves.toBe(0);
 
-      expect(result.total).toBe(2);
+      await expect(
+        listProducts({ search: "Soniq", category: "audio" }).then((r) => r.total),
+      ).resolves.toBe(2);
+
+      await expect(
+        listProducts({ search: "Northwind", category: "computers" }).then(
+          (r) => r.total,
+        ),
+      ).resolves.toBe(1);
+    });
+
+    it("falls back to defaults for NaN paging instead of returning everything", async () => {
+      // NaN survives Math.trunc/min/max, and Mongo reads .limit(NaN) as "no
+      // limit" — so a missing guard silently dumps the whole collection and
+      // leaks limit/totalPages as null through JSON.
+      const result = await listProducts({ limit: Number.NaN, page: Number.NaN });
+
+      expect(result.limit).toBe(DEFAULT_PAGE_SIZE);
+      expect(result.page).toBe(1);
+      expect(Number.isFinite(result.totalPages)).toBe(true);
+      expect(JSON.parse(JSON.stringify(result)).limit).toBe(DEFAULT_PAGE_SIZE);
+    });
+
+    it("rejects a non-numeric or negative price bound as a validation error", async () => {
+      // Must be a ServiceError, not a raw Mongoose CastError surfacing as a 500.
+      for (const options of [
+        { minPrice: Number.NaN },
+        { maxPrice: Number.NaN },
+        { minPrice: Number.POSITIVE_INFINITY },
+        { minPrice: -1 },
+      ]) {
+        await expect(listProducts(options)).rejects.toMatchObject({
+          code: "validation",
+        });
+      }
+    });
+
+    it("rejects an inverted price range", async () => {
+      await expect(
+        listProducts({ minPrice: 100, maxPrice: 10 }),
+      ).rejects.toMatchObject({ code: "validation" });
+    });
+
+    it("validates the price range even when the category is unknown", async () => {
+      // The validation must not be skipped by the unknown-category early return.
+      await expect(
+        listProducts({ minPrice: Number.NaN, category: "does-not-exist" }),
+      ).rejects.toMatchObject({ code: "validation" });
     });
 
     it("reports an out-of-range page as empty without error", async () => {

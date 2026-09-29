@@ -3,9 +3,11 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 
 import { UserModel } from "@/server/models";
 import {
+  MIN_PASSWORD_LENGTH,
   createUser,
   findUserForLogin,
   getUserById,
+  registerCustomer,
   requireUserById,
   toPublicUser,
   updateUserProfile,
@@ -94,6 +96,48 @@ describe.skipIf(!dbReachable)("users service", () => {
 
     it("defaults to customer, so registration cannot self-elevate", async () => {
       const user = await createUser(input);
+
+      expect(user.role).toBe("customer");
+    });
+  });
+
+  describe("password policy", () => {
+    it("rejects a password shorter than the minimum", async () => {
+      await expect(
+        createUser({ ...input, password: "a".repeat(MIN_PASSWORD_LENGTH - 1) }),
+      ).rejects.toMatchObject({ code: "validation" });
+    });
+
+    it("accepts a password at the minimum length", async () => {
+      await expect(
+        createUser({ ...input, password: "a".repeat(MIN_PASSWORD_LENGTH) }),
+      ).resolves.toMatchObject({ email: input.email });
+    });
+
+    it("applies on profile update too", async () => {
+      const created = await createUser(input);
+
+      await expect(
+        updateUserProfile(created.id, { password: "short" }),
+      ).rejects.toMatchObject({ code: "validation" });
+    });
+  });
+
+  describe("registerCustomer", () => {
+    it("always creates a customer, so registration cannot self-elevate", async () => {
+      const user = await registerCustomer(input);
+
+      expect(user.role).toBe("customer");
+    });
+
+    it("ignores a role smuggled in by a caller spreading a request body", async () => {
+      // The type forbids `role` here; this simulates an untyped handler doing
+      // registerCustomer({ ...body }) with role: "admin" in the body.
+      const smuggled = { ...input, role: "admin" } as Parameters<
+        typeof registerCustomer
+      >[0];
+
+      const user = await registerCustomer(smuggled);
 
       expect(user.role).toBe("customer");
     });
