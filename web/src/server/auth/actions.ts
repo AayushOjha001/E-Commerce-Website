@@ -5,16 +5,10 @@ import { redirect } from "next/navigation";
 import { safeRedirectPath } from "@/lib/redirect";
 
 import { loginSchema, registerSchema } from "@/server/auth/schemas";
-import {
-  clearSessionCookie,
-  setSessionCookie,
-} from "@/server/auth/session";
+import { clearSessionCookie, startSession } from "@/server/auth/session";
 import { isServiceError } from "@/server/services/errors";
-import {
-  findUserForLogin,
-  registerCustomer,
-  toPublicUser,
-} from "@/server/services/users";
+import { verifyCredentials } from "@/server/auth/verify-credentials";
+import { registerCustomer, toPublicUser } from "@/server/services/users";
 
 /**
  * Server actions behind the login and register forms.
@@ -61,16 +55,16 @@ export async function loginAction(
     return { error: "Please check the form", fieldErrors, values };
   }
 
-  const user = await findUserForLogin(parsed.data.email);
+  // One message and the same work for both cases, so the form cannot be used to
+  // discover which emails have accounts.
+  const user = await verifyCredentials(parsed.data.email, parsed.data.password);
 
-  // One message for both cases, so the form cannot be used to discover which
-  // emails have accounts.
-  if (!user || !(await user.matchPassword(parsed.data.password))) {
+  if (!user) {
     return { error: "Invalid email or password", values };
   }
 
   const publicUser = toPublicUser(user);
-  await setSessionCookie({ userId: publicUser.id, role: publicUser.role });
+  await startSession(publicUser.id);
 
   // Outside any try/catch: redirect() signals by throwing, and catching it would
   // swallow the navigation and surface as a generic error instead.
@@ -102,18 +96,16 @@ export async function registerAction(
   }
 
   let userId: string;
-  let role: "customer" | "admin";
   try {
-    const user = await registerCustomer(parsed.data);
-    userId = user.id;
-    role = user.role;
+    // startSession reads role and token version itself, so only the id is kept.
+    userId = (await registerCustomer(parsed.data)).id;
   } catch (error) {
     const mapped = fieldErrorsFrom(error);
     if (mapped) return { ...mapped, values };
     throw error;
   }
 
-  await setSessionCookie({ userId, role });
+  await startSession(userId);
   redirect(next);
 }
 

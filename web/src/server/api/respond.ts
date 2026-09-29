@@ -29,8 +29,9 @@ const STATUS_BY_CODE: Record<ServiceErrorCode, number> = {
   not_found: 404,
   validation: 400,
   conflict: 409,
-  // 403 rather than 401: the client has no way to "authenticate again" via a
-  // WWW-Authenticate challenge here, and the UI redirects to /login itself.
+  // 401 "who are you" vs 403 "not you": a client that gets 401 knows signing in
+  // may help, where 403 means it never will.
+  unauthenticated: 401,
   forbidden: 403,
   // 409: the request was well-formed, but the world changed under it.
   out_of_stock: 409,

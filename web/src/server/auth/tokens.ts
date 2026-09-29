@@ -24,11 +24,13 @@ const ALGORITHM = "HS256";
 export type SessionClaims = {
   userId: string;
   role: UserRole;
+  /** Must match the user's current `tokenVersion`, or the session is stale. */
+  tokenVersion: number;
 };
 
 /** Signs a session token for a user. */
 export function signSessionToken(claims: SessionClaims): string {
-  return jwt.sign({ role: claims.role }, env().JWT_SECRET, {
+  return jwt.sign({ role: claims.role, v: claims.tokenVersion }, env().JWT_SECRET, {
     subject: claims.userId,
     algorithm: ALGORITHM,
     expiresIn: SESSION_MAX_AGE_SECONDS,
@@ -53,14 +55,17 @@ export function verifySessionToken(token: string): SessionClaims | null {
 
     if (typeof payload === "string" || payload === null) return null;
 
-    const { sub, role } = payload;
+    const { sub, role, v } = payload;
     if (typeof sub !== "string" || sub.length === 0) return null;
     // An unknown role must not be trusted: if the enum ever shrinks, an old
     // token naming a removed role should fail closed rather than pass through.
     if (typeof role !== "string") return null;
     if (!(USER_ROLES as readonly string[]).includes(role)) return null;
+    // A token with no version predates this scheme, or was hand-made; fail closed
+    // rather than defaulting it to 0 and accepting it.
+    if (typeof v !== "number" || !Number.isInteger(v) || v < 0) return null;
 
-    return { userId: sub, role: role as UserRole };
+    return { userId: sub, role: role as UserRole, tokenVersion: v };
   } catch {
     return null;
   }

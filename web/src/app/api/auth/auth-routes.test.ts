@@ -28,7 +28,9 @@ const { GET: getProfile, PATCH: patchProfile } = await import(
   "@/app/api/users/profile/route"
 );
 const { SESSION_COOKIE } = await import("@/server/auth/session");
-const { verifySessionToken } = await import("@/server/auth/tokens");
+const { verifySessionToken, SESSION_MAX_AGE_SECONDS } = await import(
+  "@/server/auth/tokens"
+);
 const { UserModel } = await import("@/server/models");
 
 function jsonRequest(body: unknown, url = "http://localhost/api"): Request {
@@ -85,6 +87,15 @@ describe.skipIf(!dbReachable)("auth route handlers", () => {
       expect(cookie.httpOnly).toBe(true);
       expect(cookie.sameSite).toBe("lax");
       expect(cookie.path).toBe("/");
+      // Bounded lifetime, and never sent over plaintext in production.
+      expect(cookie.maxAge).toBe(SESSION_MAX_AGE_SECONDS);
+      expect(cookie.secure).toBe(process.env.NODE_ENV === "production");
+    });
+
+    it("scopes the session cookie to 7 days, not the legacy 30 (audit B17)", async () => {
+      await register(jsonRequest(VALID));
+
+      expect(jar.raw(SESSION_COOKIE)!.maxAge).toBe(7 * 24 * 60 * 60);
     });
 
     it("never returns the token or the password in the body", async () => {
@@ -163,12 +174,12 @@ describe.skipIf(!dbReachable)("auth route handlers", () => {
       expect(response.status).toBe(200);
     });
 
-    it("rejects a wrong password with 403 and sets no cookie", async () => {
+    it("rejects a wrong password with 401 and sets no cookie", async () => {
       const response = await login(
         jsonRequest({ email: VALID.email, password: "wrong-password" }),
       );
 
-      expect(response.status).toBe(403);
+      expect(response.status).toBe(401);
       expect(jar.raw(SESSION_COOKIE)).toBeUndefined();
     });
 
@@ -226,10 +237,11 @@ describe.skipIf(!dbReachable)("auth route handlers", () => {
       expect((await response.json()).user.email).toBe(VALID.email);
     });
 
-    it("returns JSON 403 when signed out — never an HTML stack trace (audit B6)", async () => {
+    it("returns JSON 401 when signed out — never an HTML stack trace (audit B6)", async () => {
       const response = await getProfile();
 
-      expect(response.status).toBe(403);
+      // 401 "who are you", distinct from 403 "signed in but not allowed".
+      expect(response.status).toBe(401);
       expect(response.headers.get("content-type")).toMatch(/application\/json/);
 
       const text = await response.text();
@@ -242,7 +254,7 @@ describe.skipIf(!dbReachable)("auth route handlers", () => {
     it("rejects a forged cookie", async () => {
       jar.seed(SESSION_COOKIE, "not.a.valid.jwt");
 
-      expect((await getProfile()).status).toBe(403);
+      expect((await getProfile()).status).toBe(401);
     });
 
     it("rejects a valid token for a user who no longer exists", async () => {
@@ -250,7 +262,7 @@ describe.skipIf(!dbReachable)("auth route handlers", () => {
       await UserModel.deleteMany({});
 
       // The cookie is still perfectly valid; the account behind it is gone.
-      expect((await getProfile()).status).toBe(403);
+      expect((await getProfile()).status).toBe(401);
     });
 
     it("never exposes the password hash", async () => {
@@ -288,7 +300,29 @@ describe.skipIf(!dbReachable)("auth route handlers", () => {
       const old = await login(
         jsonRequest({ email: VALID.email, password: VALID.password }),
       );
-      expect(old.status).toBe(403);
+      expect(old.status).toBe(401);
+    });
+
+    it("invalidates other sessions when the password changes", async () => {
+      // Sessions are stateless JWTs, so without a password-change cutoff a
+      // token stolen beforehand would outlive the very change meant to stop it.
+      const stolen = jar.raw(SESSION_COOKIE)!.value;
+
+      await patchProfile(jsonRequest({ password: "a-brand-new-password" }));
+
+      jar.clear();
+      jar.seed(SESSION_COOKIE, stolen);
+      expect((await getProfile()).status).toBe(401);
+    });
+
+    it("keeps the session that made the change signed in", async () => {
+      // The cutoff must not sign out the very session that changed it.
+      const response = await patchProfile(
+        jsonRequest({ password: "a-brand-new-password" }),
+      );
+
+      expect(response.status).toBe(200);
+      expect((await getProfile()).status).toBe(200);
     });
 
     it("cannot elevate its own role", async () => {
@@ -301,7 +335,7 @@ describe.skipIf(!dbReachable)("auth route handlers", () => {
     it("requires authentication", async () => {
       jar.clear();
 
-      expect((await patchProfile(jsonRequest({ name: "X" }))).status).toBe(403);
+      expect((await patchProfile(jsonRequest({ name: "X" }))).status).toBe(401);
     });
 
     it("rejects an empty update with 400", async () => {

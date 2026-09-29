@@ -1,7 +1,7 @@
 import type { NextRequest } from "next/server";
 import { describe, expect, it } from "vitest";
 
-import { proxy } from "@/proxy";
+import { config, proxy } from "@/proxy";
 import { SESSION_COOKIE } from "@/server/auth/session";
 import { signSessionToken } from "@/server/auth/tokens";
 
@@ -24,8 +24,53 @@ function request(path: string, token?: string): NextRequest {
   } as unknown as NextRequest;
 }
 
-const customerToken = signSessionToken({ userId: "u1", role: "customer" });
-const adminToken = signSessionToken({ userId: "u2", role: "admin" });
+const customerToken = signSessionToken({
+  userId: "u1",
+  role: "customer",
+  tokenVersion: 0,
+});
+const adminToken = signSessionToken({
+  userId: "u2",
+  role: "admin",
+  tokenVersion: 0,
+});
+
+/** Mirrors how Next matches a `:path*` pattern, for asserting the config. */
+function matches(path: string): boolean {
+  return config.matcher.some((pattern) => {
+    const prefix = pattern.replace("/:path*", "");
+    return path === prefix || path.startsWith(`${prefix}/`);
+  });
+}
+
+describe("proxy matcher", () => {
+  // The matcher decides whether the function runs at all, so every other test in
+  // this file is moot if it drifts. Verified by mutation: narrowing it to
+  // ["/account"] leaves all the behavioural tests green.
+  it("covers exactly the private surfaces", () => {
+    expect(config.matcher).toEqual([
+      "/account/:path*",
+      "/checkout/:path*",
+      "/admin/:path*",
+    ]);
+  });
+
+  it.each(["/account", "/account/orders", "/checkout", "/admin", "/admin/products"])(
+    "matches %s",
+    (path) => {
+      expect(matches(path)).toBe(true);
+    },
+  );
+
+  it.each(["/", "/login", "/register", "/products", "/api/auth/login", "/api/orders"])(
+    "leaves %s alone",
+    (path) => {
+      // The API must answer with JSON 401s, not redirect to an HTML login page,
+      // and the catalog must stay public.
+      expect(matches(path)).toBe(false);
+    },
+  );
+});
 
 describe("proxy (route protection)", () => {
   describe("signed out", () => {
@@ -47,15 +92,10 @@ describe("proxy (route protection)", () => {
       expect(location.searchParams.get("next")).toBe("/checkout?step=payment");
     });
 
-    it("keeps ?next relative, so it cannot be an open redirect", () => {
-      const response = proxy(request("/account"));
-      const next = new URL(
-        response.headers.get("location")!,
-      ).searchParams.get("next")!;
-
-      expect(next.startsWith("/")).toBe(true);
-      expect(next).not.toMatch(/^https?:|^\/\//);
-    });
+    // Deliberately no "?next is relative" test here: the proxy builds it from
+    // `pathname + search`, so it cannot be absolute whatever the code does —
+    // such a test passes even when broken. The real open-redirect guard is
+    // safeRedirectPath, covered in src/lib/redirect.test.ts.
 
     it("clears a cookie that failed verification", () => {
       const response = proxy(request("/account", "tampered.token.value"));
@@ -67,10 +107,11 @@ describe("proxy (route protection)", () => {
     });
 
     it("treats an expired or forged token as signed out", () => {
-      const forged = signSessionToken({ userId: "u1", role: "admin" }).slice(
-        0,
-        -3,
-      );
+      const forged = signSessionToken({
+        userId: "u1",
+        role: "admin",
+        tokenVersion: 0,
+      }).slice(0, -3);
       const response = proxy(request("/admin", forged));
 
       expect(new URL(response.headers.get("location")!).pathname).toBe("/login");

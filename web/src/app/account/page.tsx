@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 
-import { requireUser } from "@/server/auth/session";
+import { requireUserForPage } from "@/server/auth/session";
 
 export const metadata: Metadata = {
   title: "Your account · E-Shop",
@@ -9,13 +9,14 @@ export const metadata: Metadata = {
 /**
  * The account page.
  *
- * Calls requireUser() even though proxy.ts already guards /account: the proxy is
- * a convenience that keeps a signed-out visitor from seeing an empty page, while
- * this is the check that actually has to hold. If the matcher were ever changed
- * or mistaken, the page still refuses to render.
+ * Checks for itself even though proxy.ts already guards /account: the proxy is a
+ * convenience, this is the check that has to hold. It uses the *page* variant,
+ * which redirects — a Server Component that throws hits the error boundary and
+ * renders a 500 instead of a login form, which is reachable whenever a token
+ * outlives its account (a reseed is enough).
  */
 export default async function AccountPage() {
-  const user = await requireUser();
+  const user = await requireUserForPage("/account");
 
   return (
     <main className="mx-auto w-full max-w-2xl px-4 py-12">

@@ -1,30 +1,26 @@
 import { readJsonBody, jsonOk, withErrorHandling } from "@/server/api/respond";
 import { loginSchema } from "@/server/auth/schemas";
-import { setSessionCookie } from "@/server/auth/session";
+import { startSession } from "@/server/auth/session";
+import { verifyCredentials } from "@/server/auth/verify-credentials";
 import { ServiceError } from "@/server/services/errors";
-import { findUserForLogin, toPublicUser } from "@/server/services/users";
+import { toPublicUser } from "@/server/services/users";
 
 // Ports POST /api/users/login (audit R3).
 export const POST = withErrorHandling(async (request: Request) => {
   const body = await readJsonBody(request);
   const { email, password } = loginSchema.parse(body);
 
-  const user = await findUserForLogin(email);
-
-  // One message and one code for "no such user" and "wrong password" alike, so
-  // the endpoint cannot be used to enumerate which emails have accounts.
-  // (Also fixes the legacy typo: "Invalid credintials".)
-  const invalid = new ServiceError("forbidden", "Invalid email or password");
+  // One message, one code and the same amount of work for "no such user" and
+  // "wrong password" alike, so the endpoint cannot be used to enumerate which
+  // emails have accounts. (Also fixes the legacy typo: "Invalid credintials".)
+  const user = await verifyCredentials(email, password);
 
   if (!user) {
-    throw invalid;
-  }
-  if (!(await user.matchPassword(password))) {
-    throw invalid;
+    throw new ServiceError("unauthenticated", "Invalid email or password");
   }
 
   const publicUser = toPublicUser(user);
-  await setSessionCookie({ userId: publicUser.id, role: publicUser.role });
+  await startSession(publicUser.id);
 
   return jsonOk({ user: publicUser });
 });

@@ -16,5 +16,9 @@ export function safeRedirectPath(value: unknown, fallback = "/"): string {
   // Backslashes are normalised to slashes by some browsers, so `/\evil.example`
   // can escape the origin.
   if (value.includes("\\")) return fallback;
+  // Never send someone back to an auth page: /login?next=/login would bounce an
+  // already-signed-in visitor straight back to the login page.
+  const path = value.split("?")[0];
+  if (path === "/login" || path === "/register") return fallback;
   return value;
 }

@@ -1,7 +1,10 @@
 import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
 
-import { forbidden, notFound } from "@/server/services/errors";
-import { getUserById, type PublicUser } from "@/server/services/users";
+import { notFound, unauthenticated } from "@/server/services/errors";
+import { UserModel } from "@/server/models";
+import { connectDB } from "@/server/db/connect";
+import { toPublicUser, type PublicUser } from "@/server/services/users";
 import {
   SESSION_MAX_AGE_SECONDS,
   signSessionToken,
@@ -42,6 +45,25 @@ export async function setSessionCookie(claims: SessionClaims): Promise<void> {
   });
 }
 
+/**
+ * Starts a session for a user id, reading the current role and token version.
+ *
+ * The single way callers create a session, so none of them can forget the token
+ * version and mint a cookie that is stale the moment it is issued.
+ */
+export async function startSession(userId: string): Promise<void> {
+  await connectDB();
+
+  const user = await UserModel.findById(userId).select("+tokenVersion");
+  if (!user) throw unauthenticated("Account not found");
+
+  await setSessionCookie({
+    userId: String(user._id),
+    role: user.role,
+    tokenVersion: user.tokenVersion ?? 0,
+  });
+}
+
 export async function clearSessionCookie(): Promise<void> {
   const cookieStore = await cookies();
   cookieStore.delete(SESSION_COOKIE);
@@ -61,30 +83,45 @@ export async function getSessionClaims(): Promise<SessionClaims | null> {
  * Goes back to the database rather than trusting the token's claims for
  * anything but identity: a role in a week-old token may be stale, and a user
  * deleted since it was issued must not still appear signed in.
+ *
+ * Also enforces the password-change cutoff. Sessions are stateless JWTs, so
+ * without this a token stolen before a password change would outlive the very
+ * change meant to stop it.
  */
 export async function getCurrentUser(): Promise<PublicUser | null> {
   const claims = await getSessionClaims();
   if (!claims) return null;
 
-  return getUserById(claims.userId);
+  await connectDB();
+  // `tokenVersion` is select:false, like the hash, so ask for it.
+  const user = await UserModel.findById(claims.userId).select("+tokenVersion");
+  if (!user) return null;
+
+  // A token minted before the last password change carries an older version.
+  if (claims.tokenVersion !== (user.tokenVersion ?? 0)) return null;
+
+  return toPublicUser(user);
 }
 
 /**
- * The signed-in user, or a `forbidden` ServiceError.
+ * The signed-in user, or an `unauthenticated` ServiceError (401).
  *
- * For route handlers and server actions. `proxy.ts` redirects unauthenticated
- * *page* requests before they render, but that is a convenience, not the
- * security boundary — every protected handler checks for itself, so a route the
- * matcher misses is still safe.
+ * For **route handlers and server actions**, where throwing is mapped to JSON by
+ * `withErrorHandling`. Server Components must use `requireUserForPage` instead —
+ * a throw there hits the error boundary and renders a 500.
+ *
+ * `proxy.ts` redirects unauthenticated page requests before they render, but
+ * that is a convenience, not the security boundary: every protected handler
+ * checks for itself, so a route the matcher misses is still safe.
  */
 export async function requireUser(): Promise<PublicUser> {
   const user = await getCurrentUser();
-  if (!user) throw forbidden("You must be signed in");
+  if (!user) throw unauthenticated();
   return user;
 }
 
 /**
- * The signed-in user, who must be an admin.
+ * The signed-in user, who must be an admin. For route handlers and actions.
  *
  * The legacy app had no admin check anywhere — `POST /api/products` accepted
  * writes with no token at all (audit B5) — despite `User.isAdmin` existing.
@@ -96,6 +133,42 @@ export async function requireAdmin(): Promise<PublicUser> {
     // Deliberately `not_found`, which the error mapper turns into a 404: a 403
     // would confirm to a non-admin that the admin surface exists at that URL.
     throw notFound("Page");
+  }
+
+  return user;
+}
+
+/**
+ * The signed-in user, for a **Server Component**, redirecting if there is none.
+ *
+ * Pages cannot throw their way to a login screen: a `ServiceError` raised while
+ * rendering reaches the error boundary and the visitor gets a 500. That is
+ * reachable in normal use — a token stays cryptographically valid after its
+ * account is deleted, and `npm run seed` recreates users with new ids, so a
+ * developer's own live cookie starts pointing at nothing.
+ *
+ * `proxy.ts` cannot cover this either: it verifies statelessly and has no way to
+ * know the subject no longer exists.
+ */
+export async function requireUserForPage(
+  currentPath = "/account",
+): Promise<PublicUser> {
+  const user = await getCurrentUser();
+  if (user) return user;
+
+  redirect(`/login?next=${encodeURIComponent(currentPath)}`);
+}
+
+/** As `requireUserForPage`, but the user must be an admin. */
+export async function requireAdminForPage(
+  currentPath = "/admin",
+): Promise<PublicUser> {
+  const user = await requireUserForPage(currentPath);
+
+  // Same concealment as requireAdmin: a non-admin sees a 404, not a 403.
+  if (user.role !== "admin") {
+    const { notFound: renderNotFound } = await import("next/navigation");
+    renderNotFound();
   }
 
   return user;

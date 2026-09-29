@@ -4,7 +4,7 @@ import {
   withErrorHandling,
 } from "@/server/api/respond";
 import { updateProfileSchema } from "@/server/auth/schemas";
-import { requireUser, setSessionCookie } from "@/server/auth/session";
+import { requireUser, startSession } from "@/server/auth/session";
 import { updateUserProfile } from "@/server/services/users";
 
 // Ports GET /api/users/profile (audit R4).
@@ -21,9 +21,10 @@ export const PATCH = withErrorHandling(async (request: Request) => {
 
   const user = await updateUserProfile(current.id, input);
 
-  // Reissue the cookie so its claims match the updated user. The role cannot
-  // change here, but reissuing keeps token and record from drifting apart.
-  await setSessionCookie({ userId: user.id, role: user.role });
+  // Reissue the cookie so this session carries the new token version. A password
+  // change bumps it, invalidating every *other* session, and without this the
+  // caller would sign itself out with its own request.
+  await startSession(user.id);
 
   return jsonOk({ user });
 });
