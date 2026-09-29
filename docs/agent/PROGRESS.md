@@ -113,3 +113,47 @@ clean; `npm run seed` idempotent across runs and refusing a non-local target; le
 **Plan refinement (D14):** T2.4 and Batch 5's T5.1/T5.3/T5.4/T5.6 overlapped — both described writing
 the cart/order services. The logic landed once here in the data layer; Batch 5 now wires it to route
 handlers and pages. The Batch 5 task text is updated to say so.
+
+### Batch 3 — Auth ✅
+
+- **T3.1–T3.4** — Session tokens, httpOnly cookie sessions, the four auth endpoints with zod
+  validation, the shared JSON error helper (closing audit **B6**) and `proxy.ts` route protection
+  (closing **B5**). Result: ✅ · commit `17d2b63`
+- **Test-DB fix** — Found while verifying by hand that the seeded admin could not log in: the test
+  suite had been running against **the development database** and wiping it on every run, since
+  `.env.local` sets `MONGODB_URI` and the `??=` default never applied. Dates back to Batch 1.
+  Result: ✅ · commit `a72fb2f`
+- **T3.5/T3.6** — Login/register/logout UI as server actions, auth state in the header (closing
+  **C1**), replacing legacy **P4/P5**. Result: ✅ · commit `411d765`
+- **Review fixes** — commit `a6aa613`, below.
+
+**Reviewer pass:** `CHANGES_REQUIRED` — one reachable defect and several demonstrated coverage
+holes. All addressed.
+
+1. **A valid token whose account no longer exists 500'd every protected page.** The proxy admits it
+   (the token verifies statelessly), `requireUser()` then throws, and nothing maps a ServiceError to
+   a redirect in a Server Component — so the error boundary renders a 500 instead of a login form.
+   Reachable just by reseeding. Split the guards: pages redirect, handlers throw (D17).
+2. **My `alg: none` test proved nothing, and its comment was wrong.** jsonwebtoken 9 rejects that
+   token with or without the `algorithms` pin — I confirmed it directly. What the pin actually buys
+   is rejecting HS384/HS512 signed with the same secret, which had no test at all.
+3. **`config.matcher` was asserted nowhere** — narrowing it to `["/account"]` left all 16 proxy
+   tests green, because they call `proxy()` directly and bypass routing.
+4. **Cookie `secure`/`maxAge` were asserted nowhere** — hardcoding `secure: false` left every
+   auth-route test passing.
+5. **A password change did not end other sessions.** Added `tokenVersion` (D16).
+6. **`requireAdmin` had no tests**, though it is a T3.6 exit criterion.
+7. **No component tests**, though the vitest config had promised a jsdom project "when components
+   arrive in Batch 3". Added, with AuthForm coverage.
+
+Also closed: 401 vs 403 were conflated; login timing distinguished an unknown email from a wrong
+password (now burns a dummy bcrypt compare); `?next=/login` looped.
+
+**Mutation-tested** findings 1–4 — each fix fails its test when reverted, and the new algorithm test
+fails when the pin is removed while every other token test stays green.
+
+**Verified at the end of Batch 3:** 353 tests (21 files, including a jsdom project); lint, typecheck,
+build and seed clean. Live against a production build: signed-out `/account` → 307 to
+`/login?next=%2Faccount`; a deleted account's live cookie → 307 (was 500) while the API gives 401
+JSON; `/admin` → 404 for a customer, reachable for an admin; a stolen cookie dies on password change
+while the session that made the change survives.

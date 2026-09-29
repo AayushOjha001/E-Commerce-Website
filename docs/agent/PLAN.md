@@ -27,6 +27,8 @@ API becomes Route Handlers (`app/api/**/route.ts`) and business logic lives in `
 | D14 | **The cart and order service logic landed in T2.4, not Batch 5.** Batch 5 now wires the existing services to route handlers and pages. | T2.4 ("service layer: products, cart, orders, users") and T5.1/T5.3/T5.4/T5.6 overlapped in the original plan. Writing the logic once in the data layer and exposing it later avoids duplicating it; the batch tasks above are reworded to say so. |
 | D15 | **Dev MongoDB is a single-node replica set** (T2.0). | Transactions require one; a standalone mongod rejects them, which would have broken atomic order creation. Found by probing in Batch 2 rather than failing in Batch 5. |
 | D13 | **Money stored as `Number`, rounded to 2dp at write time; arithmetic done in integer cents in services.** | Keeps the existing schema shape (D2) while avoiding float drift in totals. Revisit only if a currency with different minor units is added. |
+| D16 | **Sessions carry a `tokenVersion`, bumped on password change.** | Stateless JWTs would otherwise leave a token stolen before a password change valid for its full remaining lifetime. A counter rather than a `passwordChangedAt` timestamp: a JWT's `iat` is whole seconds and cannot separate a token minted just before a change from one just after in the same second. |
+| D17 | **Two guard flavours: `requireUser()` throws (handlers/actions), `requireUserForPage()` redirects (Server Components).** | A `ServiceError` thrown while rendering hits the error boundary and renders a **500**, not a login form. Found in review; it was reachable just by reseeding, which gives users new ids while an existing cookie stays cryptographically valid. |
 | D11 | **Next.js 16.3.6.** Route protection uses **`proxy.ts`**, not `middleware.ts`. | Discovered in Batch 1 from the version-matched docs bundled at `web/node_modules/next/dist/docs/`: v16 renamed the `middleware` file and its named export to `proxy`, and the `edge` runtime is not supported there (`proxy` is always `nodejs`). Also in v16: Turbopack is the default, and `cookies()`/`headers()`/`params`/`searchParams` are **async-only** — synchronous access was removed. This affects T3.1–T3.4. |
 
 ---
@@ -56,13 +58,13 @@ all pass; `/api/health` reports a live DB; `backend/` + `frontend/` still run.
 - [x] **T2.3** — Seed script (`npm run seed`) with ~12 demo products, local placeholder images, one admin + one customer user. Idempotent.
 - [x] **T2.4** — Service layer `src/server/services/` (products, cart, orders, users) — pure functions over models, no `req`/`res`. Unit tests with an in-memory/throwaway DB.
 
-## Batch 3 — Auth
-- [ ] **T3.1** — `src/server/auth/` — bcrypt hashing, JWT sign/verify, session read from httpOnly cookie.
-- [ ] **T3.2** — `POST /api/auth/register`, `POST /api/auth/login`, `POST /api/auth/logout`, `GET /api/users/profile` (ports **R2–R4**) with **zod** input validation. Fixes the `"credintials"` typo.
-- [ ] **T3.3** — Shared API error helper so every handler returns **JSON** `{message}`, never an HTML stack trace (fixes **B6**).
-- [ ] **T3.4** — `proxy.ts` (**not** `middleware.ts` — renamed in Next 16, see D11) protecting `/account`, `/checkout`, `/admin`; `requireUser()` / `requireAdmin()` guards for handlers (fixes **B5** — admin middleware did not exist at all).
-- [ ] **T3.5** — Login/register/logout UI (ports **P4/P5**) as server actions; auth state in the header (fixes **C1**).
-- [ ] **T3.6** — Tests: register/login/logout, wrong password, protected-route redirect, non-admin blocked from admin.
+## Batch 3 — Auth ✅ complete
+- [x] **T3.1** — `src/server/auth/` — bcrypt hashing, JWT sign/verify, session read from httpOnly cookie.
+- [x] **T3.2** — `POST /api/auth/register`, `POST /api/auth/login`, `POST /api/auth/logout`, `GET /api/users/profile` (ports **R2–R4**) with **zod** input validation. Fixes the `"credintials"` typo.
+- [x] **T3.3** — Shared API error helper so every handler returns **JSON** `{message}`, never an HTML stack trace (fixes **B6**).
+- [x] **T3.4** — `proxy.ts` (**not** `middleware.ts` — renamed in Next 16, see D11) protecting `/account`, `/checkout`, `/admin`; `requireUser()` / `requireAdmin()` guards for handlers (fixes **B5** — admin middleware did not exist at all).
+- [x] **T3.5** — Login/register/logout UI (ports **P4/P5**) as server actions; auth state in the header (fixes **C1**).
+- [x] **T3.6** — Tests: register/login/logout, wrong password, protected-route redirect, non-admin blocked from admin.
 
 ## Batch 4 — Catalog
 - [ ] **T4.1** — `GET /api/products` with **pagination, search, category filter, sort** (fixes **B5**/R5 gap).
