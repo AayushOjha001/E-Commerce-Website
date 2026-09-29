@@ -4,25 +4,31 @@ Nothing here stops Batch 1. Items are ordered by when they will actually bite.
 
 ---
 
-## 🔴 BL-1 — `gh` is not authenticated (will block the Batch 1 PR)
+## 🔴 BL-1 — `gh` is not authenticated, so the Batch 1 PR is not open yet
 
-`gh --version` → `2.101.0` (installed) but:
+**The branch pushed fine.** `agent/batch-1-foundation` is on GitHub with 9 commits — stored git
+credentials worked. Only the PR step failed:
+
 ```
-gh auth status
-> You are not logged into any GitHub hosts. To log in, run: gh auth login
+gh pr create ...
+> To get started with GitHub CLI, please run:  gh auth login
+> Alternatively, populate the GH_TOKEN environment variable with a GitHub API authentication token.
 ```
 
-**Also unknown:** whether plain `git push` to this repo has stored credentials. The remote is HTTPS
-(`https://github.com/AayushOjha001/E-Commerce-Website.git`), so a push needs either a credential
-helper entry or a token.
+`gh auth login` is an interactive OAuth flow, so I cannot run it from a non-interactive session.
 
-**What I need:** run `gh auth login` (this also sets up git credentials). I cannot run it — it is an
-interactive OAuth flow and this session is non-interactive.
+**What I need from you — one of these:**
 
-**Until then:** I commit everything locally on `agent/batch-1-foundation`. At the end of Batch 1 I
-will attempt the push; if it fails I will leave the branch ready and record it here so you only need
-to run `git push -u origin agent/batch-1-foundation` and `gh pr create` yourself. Work continues
-regardless.
+1. `gh auth login`, then:
+   ```bash
+   gh pr create --base master --head agent/batch-1-foundation --title "Batch 1: Foundation" --body-file docs/agent/pr-batch-1.md
+   ```
+2. Or just click the link GitHub printed on push and paste in
+   [`docs/agent/pr-batch-1.md`](pr-batch-1.md) (the full PR body, written and ready):
+   <https://github.com/AayushOjha001/E-Commerce-Website/pull/new/agent/batch-1-foundation>
+
+Either way **nothing is lost** — the work is pushed and Batch 2 can start without the PR existing.
+Once `gh` is authenticated I will open PRs for later batches myself.
 
 ---
 
@@ -73,6 +79,9 @@ needed now.
 ---
 
 ## Answered / no longer blocking
+
+- **Pushing** — stored git credentials work for `git push` to `agent/*` branches, so only the `gh`
+  PR step needs BL-1 resolved.
 
 - **Migration option** — you chose **Option A** (full-stack Next.js, Express ported to route handlers
   and deleted in Batch 7). Recorded in PLAN.md §Decisions.
