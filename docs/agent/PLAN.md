@@ -15,7 +15,7 @@ API becomes Route Handlers (`app/api/**/route.ts`) and business logic lives in `
 |---|---|---|
 | D1 | **Option A — full-stack Next.js.** Express is ported to route handlers and deleted in Batch 7. | User chose Option A explicitly. |
 | D2 | **Keep MongoDB + Mongoose 8**, typed with TS. *Not* Prisma/SQL. | Audit §6.1: four usable schemas already exist; the reference's "use Prisma" default only applies when there is no ORM. Rewriting to SQL would discard a sound data model. |
-| D3 | **Local dev DB via `docker-compose` on host port `27018`.** | No local `mongod`; 27017 is occupied by an unrelated `qdrant_check-mongodb-1` container which must not be touched. |
+| D3 | **Local dev DB via `docker-compose` on port `27018`, as a single-node replica set.** | No local `mongod`; 27017 is occupied by an unrelated `qdrant_check-mongodb-1` container which must not be touched. Replica set (not standalone) because **transactions require one** — proven in Batch 2, see D13. |
 | D4 | **Tailwind v4** in the new app (`@tailwindcss/postcss`). | Old app already used Tailwind v4 utility CSS, so the reference's "Tailwind if the old app used utility CSS" applies. |
 | D5 | **Vitest** as the test runner, everywhere. | No runner exists today (audit §2). Reference names Vitest. |
 | D6 | **Auth: port the existing JWT logic** into route handlers, but move the token to an **httpOnly cookie**. Not NextAuth. | Keeps the bcrypt/`isAdmin` model the audit found working, and fixes B17 (JWT in `localStorage`). Fewer moving parts than Auth.js for a credentials-only app. |
@@ -23,6 +23,8 @@ API becomes Route Handlers (`app/api/**/route.ts`) and business logic lives in `
 | D8 | **Payments: mock provider** behind a swappable `PaymentProvider` interface. | User said test/mock mode; no payment dep exists. See BLOCKERS BL-2. |
 | D9 | **Old app stays runnable** until Batch 7 (`backend/` + `frontend/` untouched except a `.env.example` and the lint fix). | Skill hard rule + user instruction. |
 | D10 | Every fix for audit defects **B1–B17** is attached to the batch that ports the matching feature, so nothing is fixed twice. | Porting means fixing, not copying (audit §6.3). |
+| D12 | **Mongoose 9.10.2 in `web/`**, not 8.19.1 as D2 first said. | Deviation from "keep Mongoose 8", logged per the skill's major-version rule. `npm install mongoose` resolved to the current major, and Batch 1 shipped and tested on it (29 tests, real DB). A greenfield app should take the current stable major rather than match the app being deleted. Verified behaviour differences: mongoose 9 **no longer throws** when a model name is re-registered (8 raised `OverwriteModelError`), so the `mongoose.models.X ??=` guard is kept for identity/hot-reload rather than to avoid a crash. |
+| D13 | **Money stored as `Number`, rounded to 2dp at write time; arithmetic done in integer cents in services.** | Keeps the existing schema shape (D2) while avoiding float drift in totals. Revisit only if a currency with different minor units is added. |
 | D11 | **Next.js 16.3.6.** Route protection uses **`proxy.ts`**, not `middleware.ts`. | Discovered in Batch 1 from the version-matched docs bundled at `web/node_modules/next/dist/docs/`: v16 renamed the `middleware` file and its named export to `proxy`, and the `edge` runtime is not supported there (`proxy` is always `nodejs`). Also in v16: Turbopack is the default, and `cookies()`/`headers()`/`params`/`searchParams` are **async-only** — synchronous access was removed. This affects T3.1–T3.4. |
 
 ---
@@ -46,6 +48,7 @@ all pass; `/api/health` reports a live DB; `backend/` + `frontend/` still run.
 ---
 
 ## Batch 2 — Data layer
+- [x] **T2.0** *(added during Batch 2)* — Convert the dev MongoDB to a single-node replica set so transactions work. *Done when:* a transactional write commits and an aborted one rolls back.
 - [ ] **T2.1** — Port schemas to TS models in `src/server/models/`: `User`, `Product`, `Category` (new — old app had only a `category` string), `Cart`/`CartItem`, `Order`/`OrderItem`, `Address`. Fix **B8** (`countInStock` → `Number`), **B10** (`timestamps` typo), **B9** (missing `return` in the password hook), **B11** (`orderItems.image`).
 - [ ] **T2.2** — Model-level indexes + uniqueness (`user.email`, `cart.user`, product text index for search).
 - [ ] **T2.3** — Seed script (`npm run seed`) with ~12 demo products, local placeholder images, one admin + one customer user. Idempotent.

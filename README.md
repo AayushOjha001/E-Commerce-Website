@@ -33,10 +33,22 @@ From the repo root:
 docker compose up -d mongo
 ```
 
-This runs MongoDB 7 and maps **host port 27018** → container 27017. Port 27018 rather
-than the default 27017 deliberately, to avoid colliding with any MongoDB you already run.
+This runs MongoDB 7 on **port 27018** as a **single-node replica set**, and initiates the set
+automatically on first start.
 
-Check it: `docker compose ps` should show `ecommerce-mongo` as `healthy`.
+Two deliberate choices:
+
+- **Port 27018**, not the default 27017, to avoid colliding with any MongoDB you already run.
+- **A replica set**, not a standalone mongod, because multi-document transactions require one.
+  A standalone deployment rejects them (`This MongoDB deployment does not support retryable
+  writes`), which would break atomic order creation.
+
+Wait for it to be ready — `docker compose ps` should show `ecommerce-mongo` as `healthy`. The
+healthcheck only passes once a primary has been elected, so "healthy" really means usable:
+
+```bash
+docker compose ps
+```
 
 ## 2. Run the new Next.js app (`web/`)
 
