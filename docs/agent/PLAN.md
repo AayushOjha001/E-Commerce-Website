@@ -23,21 +23,22 @@ API becomes Route Handlers (`app/api/**/route.ts`) and business logic lives in `
 | D8 | **Payments: mock provider** behind a swappable `PaymentProvider` interface. | User said test/mock mode; no payment dep exists. See BLOCKERS BL-2. |
 | D9 | **Old app stays runnable** until Batch 7 (`backend/` + `frontend/` untouched except a `.env.example` and the lint fix). | Skill hard rule + user instruction. |
 | D10 | Every fix for audit defects **B1–B17** is attached to the batch that ports the matching feature, so nothing is fixed twice. | Porting means fixing, not copying (audit §6.3). |
+| D11 | **Next.js 16.3.6.** Route protection uses **`proxy.ts`**, not `middleware.ts`. | Discovered in Batch 1 from the version-matched docs bundled at `web/node_modules/next/dist/docs/`: v16 renamed the `middleware` file and its named export to `proxy`, and the `edge` runtime is not supported there (`proxy` is always `nodejs`). Also in v16: Turbopack is the default, and `cookies()`/`headers()`/`params`/`searchParams` are **async-only** — synchronous access was removed. This affects T3.1–T3.4. |
 
 ---
 
-## Batch 1 — Foundation (current)
+## Batch 1 — Foundation ✅ complete
 
 Goal: a `web/` Next.js app that builds, tests, lints, typechecks, and talks to a real local DB —
 with the old app still runnable. **No product features yet.**
 
-- [ ] **T1.1** — `docker-compose.yml` at repo root with a `mongo:7` service on host port `27018`, named volume. `.env.example` for `backend/` documenting `PORT`/`MONGO_URI`/`JWT_SECRET` (fixes **B15**). *Done when:* `docker compose up -d mongo` is healthy and the old backend boots against it.
-- [ ] **T1.2** — Scaffold `web/` via `create-next-app` (TypeScript, App Router, ESLint, Tailwind v4, `src/` dir, no Turbopack flag in CI). Strip the boilerplate landing page to a placeholder. *Done when:* `npm run build` and `npm run lint` pass in `web/`.
-- [ ] **T1.3** — `web/.env.example` + typed config loader `src/lib/env.ts` validating `MONGODB_URI`, `JWT_SECRET`, `NODE_ENV` with **zod** (fail fast at boot). *Done when:* a missing var throws a readable error; no real secret is committed.
-- [ ] **T1.4** — Mongoose connection in `src/server/db/connect.ts` with the **global-cache pattern** (required: Next dev hot-reload otherwise opens a new pool per reload). *Done when:* repeated calls reuse one connection.
-- [ ] **T1.5** — `GET /api/health` route handler returning `{status, db}` and actually pinging the DB. *Done when:* `curl` returns `200` + `"db":"connected"` with mongo up, and a non-200 with mongo down.
-- [ ] **T1.6** — Vitest + one passing smoke test for the env loader and the health service. *Done when:* `npm test` passes and is wired into `package.json`.
-- [ ] **T1.7** — Root `README.md` section: how to run old app + new app side by side; `docs/agent/PROGRESS.md` started. *Done when:* a fresh clone can follow it.
+- [x] **T1.1** — `docker-compose.yml` at repo root with a `mongo:7` service on host port `27018`, named volume. `.env.example` for `backend/` documenting `PORT`/`MONGO_URI`/`JWT_SECRET` (fixes **B15**). *Done when:* `docker compose up -d mongo` is healthy and the old backend boots against it.
+- [x] **T1.2** — Scaffold `web/` via `create-next-app` (TypeScript, App Router, ESLint, Tailwind v4, `src/` dir, no Turbopack flag in CI). Strip the boilerplate landing page to a placeholder. *Done when:* `npm run build` and `npm run lint` pass in `web/`.
+- [x] **T1.3** — `web/.env.example` + typed config loader `src/lib/env.ts` validating `MONGODB_URI`, `JWT_SECRET`, `NODE_ENV` with **zod** (fail fast at boot). *Done when:* a missing var throws a readable error; no real secret is committed.
+- [x] **T1.4** — Mongoose connection in `src/server/db/connect.ts` with the **global-cache pattern** (required: Next dev hot-reload otherwise opens a new pool per reload). *Done when:* repeated calls reuse one connection.
+- [x] **T1.5** — `GET /api/health` route handler returning `{status, db}` and actually pinging the DB. *Done when:* `curl` returns `200` + `"db":"connected"` with mongo up, and a non-200 with mongo down.
+- [x] **T1.6** — Vitest + one passing smoke test for the env loader and the health service. *Done when:* `npm test` passes and is wired into `package.json`.
+- [x] **T1.7** — Root `README.md` section: how to run old app + new app side by side; `docs/agent/PROGRESS.md` started. *Done when:* a fresh clone can follow it.
 
 **Batch 1 exit criteria:** in `web/` — `npm run lint`, `npx tsc --noEmit`, `npm test`, `npm run build`
 all pass; `/api/health` reports a live DB; `backend/` + `frontend/` still run.
@@ -54,7 +55,7 @@ all pass; `/api/health` reports a live DB; `backend/` + `frontend/` still run.
 - [ ] **T3.1** — `src/server/auth/` — bcrypt hashing, JWT sign/verify, session read from httpOnly cookie.
 - [ ] **T3.2** — `POST /api/auth/register`, `POST /api/auth/login`, `POST /api/auth/logout`, `GET /api/users/profile` (ports **R2–R4**) with **zod** input validation. Fixes the `"credintials"` typo.
 - [ ] **T3.3** — Shared API error helper so every handler returns **JSON** `{message}`, never an HTML stack trace (fixes **B6**).
-- [ ] **T3.4** — `middleware.ts` protecting `/account`, `/checkout`, `/admin`; `requireUser()` / `requireAdmin()` guards for handlers (fixes **B5** — admin middleware did not exist at all).
+- [ ] **T3.4** — `proxy.ts` (**not** `middleware.ts` — renamed in Next 16, see D11) protecting `/account`, `/checkout`, `/admin`; `requireUser()` / `requireAdmin()` guards for handlers (fixes **B5** — admin middleware did not exist at all).
 - [ ] **T3.5** — Login/register/logout UI (ports **P4/P5**) as server actions; auth state in the header (fixes **C1**).
 - [ ] **T3.6** — Tests: register/login/logout, wrong password, protected-route redirect, non-admin blocked from admin.
 
