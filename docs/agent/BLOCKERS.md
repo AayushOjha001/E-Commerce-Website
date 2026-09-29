@@ -1,34 +1,6 @@
 # Blockers — things I need from you
 
-Nothing here stops Batch 1. Items are ordered by when they will actually bite.
-
----
-
-## 🔴 BL-1 — `gh` is not authenticated, so the Batch 1 PR is not open yet
-
-**The branch pushed fine.** `agent/batch-1-foundation` is on GitHub with 9 commits — stored git
-credentials worked. Only the PR step failed:
-
-```
-gh pr create ...
-> To get started with GitHub CLI, please run:  gh auth login
-> Alternatively, populate the GH_TOKEN environment variable with a GitHub API authentication token.
-```
-
-`gh auth login` is an interactive OAuth flow, so I cannot run it from a non-interactive session.
-
-**What I need from you — one of these:**
-
-1. `gh auth login`, then:
-   ```bash
-   gh pr create --base master --head agent/batch-1-foundation --title "Batch 1: Foundation" --body-file docs/agent/pr-batch-1.md
-   ```
-2. Or just click the link GitHub printed on push and paste in
-   [`docs/agent/pr-batch-1.md`](pr-batch-1.md) (the full PR body, written and ready):
-   <https://github.com/AayushOjha001/E-Commerce-Website/pull/new/agent/batch-1-foundation>
-
-Either way **nothing is lost** — the work is pushed and Batch 2 can start without the PR existing.
-Once `gh` is authenticated I will open PRs for later batches myself.
+Nothing here is currently blocking. Items are ordered by when they will actually bite.
 
 ---
 
@@ -80,8 +52,10 @@ needed now.
 
 ## Answered / no longer blocking
 
-- **Pushing** — stored git credentials work for `git push` to `agent/*` branches, so only the `gh`
-  PR step needs BL-1 resolved.
+- **BL-1 `gh` authentication — RESOLVED 2026-09-29.** `gh auth status` now shows
+  `Logged in to github.com account AayushOjha001`, and **PR #1 "Batch 1: Foundation" is open**
+  against `master`: https://github.com/AayushOjha001/E-Commerce-Website/pull/1
+  I can open PRs for later batches myself from here on.
 
 - **Migration option** — you chose **Option A** (full-stack Next.js, Express ported to route handlers
   and deleted in Batch 7). Recorded in PLAN.md §Decisions.

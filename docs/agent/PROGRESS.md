@@ -60,3 +60,8 @@ Legacy `backend/` boots and legacy `frontend/` lints and builds clean.
 
 **Note for the next session:** `docker compose up -d mongo` must be running for the DB-backed tests
 to execute; without it they skip (by design). Use `REQUIRE_DB=1 npm test` to force them.
+
+- **Batch 1 · push & PR** — Pushed 9 commits to `agent/batch-1-foundation`. `gh pr create` initially
+  failed (CLI unauthenticated, BL-1); the user then ran `gh auth login`, and **PR #1 "Batch 1:
+  Foundation"** is now open against `master`:
+  https://github.com/AayushOjha001/E-Commerce-Website/pull/1 — BL-1 resolved. Result: ✅
