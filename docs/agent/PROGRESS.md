@@ -65,3 +65,51 @@ to execute; without it they skip (by design). Use `REQUIRE_DB=1 npm test` to for
   failed (CLI unauthenticated, BL-1); the user then ran `gh auth login`, and **PR #1 "Batch 1:
   Foundation"** is now open against `master`:
   https://github.com/AayushOjha001/E-Commerce-Website/pull/1 — BL-1 resolved. Result: ✅
+
+### Batch 2 — Data layer ✅
+
+- **T2.0** *(unplanned, found by probing)* — The dev MongoDB was a standalone mongod, which **rejects
+  transactions** (`This MongoDB deployment does not support retryable writes`). That would have
+  broken atomic order creation in Batch 5. Converted to a single-node replica set on port 27018;
+  verified a transactional write commits and an aborted one rolls back. Result: ✅ · commit `ff22238`
+- **T2.1/T2.2** — Typed models + indexes, fixing audit **B8** (`countInStock` was `String`, so `"10" <
+  "9"`), **B9** (password re-hash locked users out), **B10** (`timestamp` typo meant no cart
+  timestamps) and **B11** (required `image` the code never set). `isAdmin` became `role`. Result: ✅ ·
+  commit `5a475fa`
+- **T2.3** — Idempotent seed: 5 categories, 12 products (one deliberately out of stock), 2 accounts,
+  12 committed local SVGs replacing the dead `via.placeholder.com` images. Result: ✅ · commit `3d7a914`
+- **T2.4** — Service layer, in two commits: products/categories/users/pricing (`055b8d4`), then
+  cart/orders with atomic checkout (`013ef52`). This is where the audit's worst defects are actually
+  fixed: **B2** (order creation always 500'd), **B3** (client-controlled prices; tax/shipping silently
+  0), **B4** (order IDOR), **B13** (stock never decremented), **R9** (cart qty overwritten rather than
+  incremented), **R5** (no pagination/search/filter/sort).
+- **Review fixes** — commit `60258fc`, see below.
+
+**Reviewer pass:** `CHANGES_REQUIRED`, 17 findings, all addressed. The reviewer confirmed the stock
+decrement is genuinely race-free and the IDOR fix airtight, then found four things worth the round
+trip:
+
+1. **`NaN` bypassed the paging clamp entirely.** It survives `Math.trunc`/`min`/`max`, and Mongo reads
+   `.limit(NaN)` as *no limit* — so the clamp inverted into "return the whole collection", the exact
+   opposite of its own docstring. `?limit=abc` via `Number()` produces it.
+2. **Price bounds reached Mongo unvalidated**, raising a raw `CastError` that would surface as a 500
+   with driver internals in it.
+3. **The seed's production guard was dead code.** It keyed on `NODE_ENV === "production"`, but `tsx`
+   sets no `NODE_ENV`, so for the documented `npm run seed` it never fired once. Rewritten to inspect
+   the target host; verified it now refuses a real `mongodb+srv://` URI.
+4. **`createUser` accepted a `role`** and is what registration will call in Batch 3 — a handler
+   spreading a request body into it would have granted self-elevation. Split out `registerCustomer`.
+
+It also caught a **vacuous test** of mine: "combines search with a category filter" passed with the
+filter removed, because the search term alone already produced the expected count.
+
+**Mutation tests** (logic removed → suite fails; restored → passes) on the two security-critical
+paths: removing the ownership check fails the IDOR test, and removing the atomic stock guard makes
+two concurrent checkouts *both* succeed and oversell.
+
+**Verified at the end of Batch 2:** 222 tests pass with `REQUIRE_DB=1`; lint, typecheck and build
+clean; `npm run seed` idempotent across runs and refusing a non-local target; legacy app still runs.
+
+**Plan refinement (D14):** T2.4 and Batch 5's T5.1/T5.3/T5.4/T5.6 overlapped — both described writing
+the cart/order services. The logic landed once here in the data layer; Batch 5 now wires it to route
+handlers and pages. The Batch 5 task text is updated to say so.

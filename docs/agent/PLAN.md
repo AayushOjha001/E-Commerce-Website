@@ -24,6 +24,8 @@ API becomes Route Handlers (`app/api/**/route.ts`) and business logic lives in `
 | D9 | **Old app stays runnable** until Batch 7 (`backend/` + `frontend/` untouched except a `.env.example` and the lint fix). | Skill hard rule + user instruction. |
 | D10 | Every fix for audit defects **B1–B17** is attached to the batch that ports the matching feature, so nothing is fixed twice. | Porting means fixing, not copying (audit §6.3). |
 | D12 | **Mongoose 9.10.2 in `web/`**, not 8.19.1 as D2 first said. | Deviation from "keep Mongoose 8", logged per the skill's major-version rule. `npm install mongoose` resolved to the current major, and Batch 1 shipped and tested on it (29 tests, real DB). A greenfield app should take the current stable major rather than match the app being deleted. Verified behaviour differences: mongoose 9 **no longer throws** when a model name is re-registered (8 raised `OverwriteModelError`), so the `mongoose.models.X ??=` guard is kept for identity/hot-reload rather than to avoid a crash. |
+| D14 | **The cart and order service logic landed in T2.4, not Batch 5.** Batch 5 now wires the existing services to route handlers and pages. | T2.4 ("service layer: products, cart, orders, users") and T5.1/T5.3/T5.4/T5.6 overlapped in the original plan. Writing the logic once in the data layer and exposing it later avoids duplicating it; the batch tasks above are reworded to say so. |
+| D15 | **Dev MongoDB is a single-node replica set** (T2.0). | Transactions require one; a standalone mongod rejects them, which would have broken atomic order creation. Found by probing in Batch 2 rather than failing in Batch 5. |
 | D13 | **Money stored as `Number`, rounded to 2dp at write time; arithmetic done in integer cents in services.** | Keeps the existing schema shape (D2) while avoiding float drift in totals. Revisit only if a currency with different minor units is added. |
 | D11 | **Next.js 16.3.6.** Route protection uses **`proxy.ts`**, not `middleware.ts`. | Discovered in Batch 1 from the version-matched docs bundled at `web/node_modules/next/dist/docs/`: v16 renamed the `middleware` file and its named export to `proxy`, and the `edge` runtime is not supported there (`proxy` is always `nodejs`). Also in v16: Turbopack is the default, and `cookies()`/`headers()`/`params`/`searchParams` are **async-only** — synchronous access was removed. This affects T3.1–T3.4. |
 
@@ -47,12 +49,12 @@ all pass; `/api/health` reports a live DB; `backend/` + `frontend/` still run.
 
 ---
 
-## Batch 2 — Data layer
+## Batch 2 — Data layer ✅ complete
 - [x] **T2.0** *(added during Batch 2)* — Convert the dev MongoDB to a single-node replica set so transactions work. *Done when:* a transactional write commits and an aborted one rolls back.
-- [ ] **T2.1** — Port schemas to TS models in `src/server/models/`: `User`, `Product`, `Category` (new — old app had only a `category` string), `Cart`/`CartItem`, `Order`/`OrderItem`, `Address`. Fix **B8** (`countInStock` → `Number`), **B10** (`timestamps` typo), **B9** (missing `return` in the password hook), **B11** (`orderItems.image`).
-- [ ] **T2.2** — Model-level indexes + uniqueness (`user.email`, `cart.user`, product text index for search).
-- [ ] **T2.3** — Seed script (`npm run seed`) with ~12 demo products, local placeholder images, one admin + one customer user. Idempotent.
-- [ ] **T2.4** — Service layer `src/server/services/` (products, cart, orders, users) — pure functions over models, no `req`/`res`. Unit tests with an in-memory/throwaway DB.
+- [x] **T2.1** — Port schemas to TS models in `src/server/models/`: `User`, `Product`, `Category` (new — old app had only a `category` string), `Cart`/`CartItem`, `Order`/`OrderItem`, `Address`. Fix **B8** (`countInStock` → `Number`), **B10** (`timestamps` typo), **B9** (missing `return` in the password hook), **B11** (`orderItems.image`).
+- [x] **T2.2** — Model-level indexes + uniqueness (`user.email`, `cart.user`, product text index for search).
+- [x] **T2.3** — Seed script (`npm run seed`) with ~12 demo products, local placeholder images, one admin + one customer user. Idempotent.
+- [x] **T2.4** — Service layer `src/server/services/` (products, cart, orders, users) — pure functions over models, no `req`/`res`. Unit tests with an in-memory/throwaway DB.
 
 ## Batch 3 — Auth
 - [ ] **T3.1** — `src/server/auth/` — bcrypt hashing, JWT sign/verify, session read from httpOnly cookie.
@@ -71,12 +73,12 @@ all pass; `/api/health` reports a live DB; `backend/` + `frontend/` still run.
 - [ ] **T4.6** — Tests: list/filter/pagination service, detail 404 path.
 
 ## Batch 5 — Cart, checkout, orders
-- [ ] **T5.1** — Cart service + `GET/POST /api/cart`, `DELETE /api/cart/[productId]` (ports **R8–R10**) with qty and stock validation; qty **increments** correctly.
+- [ ] **T5.1** — Expose the cart service (built in T2.4) via `GET/POST /api/cart` and `DELETE /api/cart/[productId]` (ports **R8–R10**). Validation, stock checks and correct qty incrementing are already done and tested.
 - [ ] **T5.2** — Cart page with server data + optimistic updates (replaces **P3**, the `"No items yet."` stub).
-- [ ] **T5.3** — Checkout: **server-computed** `itemsPrice`/`tax`/`shipping`/`total` from DB prices — never client-supplied (fixes **B3**).
-- [ ] **T5.4** — `POST /api/orders`: transactional order creation + **stock decrement** (fixes **B2**, **B13**).
+- [ ] **T5.3** — Checkout page/flow on top of the pricing service (built in T2.4, which already computes all totals server-side — **B3** fixed there).
+- [ ] **T5.4** — `POST /api/orders` route handler over `createOrderFromCart` (built in T2.4: transactional, atomic stock decrement — **B2**/**B13** fixed and race-tested there).
 - [ ] **T5.5** — Mock payment provider behind a `PaymentProvider` interface; mark order paid (BL-2).
-- [ ] **T5.6** — `GET /api/orders` (my orders) and `GET /api/orders/[id]` **with an ownership check** (fixes **B4** IDOR).
+- [ ] **T5.6** — `GET /api/orders` and `GET /api/orders/[id]` route handlers over the order service (ownership check + **B4** IDOR fix already implemented and mutation-tested in T2.4).
 - [ ] **T5.7** — Pages: checkout, order confirmation, order history, order detail.
 - [ ] **T5.8** — Tests: stock rejection, total correctness, IDOR is denied, empty-cart checkout rejected.
 
