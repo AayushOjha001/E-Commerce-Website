@@ -1,0 +1,19 @@
+{
+  "permissions": {
+    "allow": [
+      "Read", "Edit", "Write", "Glob", "Grep",
+      "Bash(npm:*)", "Bash(npx:*)", "Bash(pnpm:*)", "Bash(yarn:*)", "Bash(node:*)",
+      "Bash(python:*)", "Bash(pip:*)", "Bash(pytest:*)",
+      "Bash(docker compose:*)", "Bash(curl:*)",
+      "Bash(git status:*)", "Bash(git diff:*)", "Bash(git add:*)", "Bash(git commit:*)",
+      "Bash(git checkout:*)", "Bash(git switch:*)", "Bash(git branch:*)", "Bash(git log:*)",
+      "Bash(git push origin agent/*)", "Bash(git push -u origin agent/*)",
+      "Bash(gh pr create:*)", "Bash(gh pr list:*)",
+      "Bash(ls:*)", "Bash(cat:*)", "Bash(mkdir:*)"
+    ],
+    "deny": [
+      "Bash(git push --force:*)", "Bash(git push -f:*)", "Bash(git push origin main:*)",
+      "Bash(git push origin master:*)", "Bash(git reset --hard:*)"
+    ]
+  }
+}
