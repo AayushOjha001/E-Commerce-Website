@@ -84,12 +84,12 @@ all pass; `/api/health` reports a live DB; `backend/` + `frontend/` still run.
 - [x] **T5.7** — Pages: checkout, order confirmation, order history, order detail.
 - [x] **T5.8** — Tests: stock rejection, total correctness, IDOR is denied, empty-cart checkout rejected.
 
-## Batch 6 — Admin
-- [ ] **T6.1** — Admin product CRUD API (create/update/delete), admin-only (properly fixes **B5**).
-- [ ] **T6.2** — Admin category CRUD API.
-- [ ] **T6.3** — Admin order list + status updates (mark paid/delivered).
-- [ ] **T6.4** — Admin UI pages (products table + form, orders table), role-gated.
-- [ ] **T6.5** — Tests: non-admin gets 403 on every admin route.
+## Batch 6 — Admin ✅ complete
+- [x] **T6.1** — Admin product CRUD API (create/update/delete), admin-only (properly fixes **B5**).
+- [x] **T6.2** — Admin category CRUD API.
+- [x] **T6.3** — Admin order list + status updates (mark paid/delivered).
+- [x] **T6.4** — Admin UI pages (products table + form, orders table), role-gated.
+- [x] **T6.5** — Tests: non-admin gets 403 on every admin route.
 
 ## Batch 7 — Parity check & cutover
 - [ ] **T7.1** — Walk the **AUDIT.md parity checklist** and tick every row (13 routes + 12 pages).
