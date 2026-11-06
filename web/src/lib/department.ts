@@ -18,13 +18,15 @@ export type DepartmentField = keyof typeof DEPARTMENT_FIELDS;
 
 const FIELD_NAMES = Object.keys(DEPARTMENT_FIELDS) as DepartmentField[];
 
-const FIELD_BY_SLUG: Record<string, DepartmentField> = {
-  audio: "marigold",
-  computers: "sky",
-  phones: "coral",
-  "home-kitchen": "mint",
-  wearables: "lilac",
-};
+// A Map, not an object: a category an admin names "Constructor" gets the slug
+// `constructor`, which on a plain object finds Object.prototype's own property.
+const FIELD_BY_SLUG = new Map<string, DepartmentField>([
+  ["audio", "marigold"],
+  ["computers", "sky"],
+  ["phones", "coral"],
+  ["home-kitchen", "mint"],
+  ["wearables", "lilac"],
+]);
 
 /**
  * The field for a category slug.
@@ -36,7 +38,7 @@ const FIELD_BY_SLUG: Record<string, DepartmentField> = {
 export function departmentField(slug: string | null | undefined): DepartmentField {
   if (!slug) return "sky";
 
-  const known = FIELD_BY_SLUG[slug];
+  const known = FIELD_BY_SLUG.get(slug);
   if (known) return known;
 
   let hash = 0;

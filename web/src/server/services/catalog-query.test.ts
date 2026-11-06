@@ -35,9 +35,17 @@ describe("parseCatalogQuery (API, strict)", () => {
     ["minPrice=free"],
     ["maxPrice=-5"],
     ["minPrice=Infinity"],
+    ["minPrice=0x10"],
+    ["page=1e3"],
     [`search=${"x".repeat(101)}`],
   ])("rejects %s", (query) => {
     expect(() => parseCatalogQuery(new URLSearchParams(query))).toThrow(ZodError);
+  });
+
+  it("cannot be talked into showing soft-deleted products", () => {
+    const options = parseCatalogQuery(new URLSearchParams("includeInactive=true"));
+
+    expect(options).not.toHaveProperty("includeInactive");
   });
 });
 
@@ -46,6 +54,14 @@ describe("parseCatalogPageParams (page, lenient)", () => {
     expect(
       parseCatalogPageParams({ page: "abc", sort: "cheapest", search: "kettle" }),
     ).toEqual({ search: "kettle" });
+  });
+
+  it("ignores limit, which the page's links could not carry", () => {
+    expect(parseCatalogPageParams({ limit: "5" })).toEqual({});
+  });
+
+  it("cannot be talked into showing soft-deleted products", () => {
+    expect(parseCatalogPageParams({ includeInactive: "true" })).toEqual({});
   });
 
   it("uses the first value of a repeated parameter", () => {

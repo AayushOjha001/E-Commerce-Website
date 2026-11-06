@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import { formatPriceInText } from "@/lib/format";
+import { catalogHref } from "@/lib/catalog-url";
 import { departmentClass } from "@/lib/department";
 import { listCategories } from "@/server/services/categories";
 import {
@@ -16,7 +17,10 @@ import {
  * sits under, so the department list simply drops out.
  */
 export async function SiteFooter() {
-  const categories = await listCategories().catch(() => []);
+  const categories = await listCategories().catch((error: unknown) => {
+    console.error("[footer] could not load departments:", error);
+    return [];
+  });
 
   return (
     <footer className="mt-auto bg-ink text-paper">
@@ -40,7 +44,7 @@ export async function SiteFooter() {
                     className={`size-3 ${departmentClass(category.slug)}`}
                   />
                   <Link
-                    href={`/products?category=${category.slug}`}
+                    href={catalogHref({ category: category.slug })}
                     className="underline-offset-4 hover:underline"
                   >
                     {category.name}

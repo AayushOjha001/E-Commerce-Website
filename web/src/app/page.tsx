@@ -1,7 +1,4 @@
-import Link from "next/link";
-
 import { DepartmentShelf } from "@/components/department-shelf";
-import { LINK_CLASS } from "@/components/ui";
 import { formatPriceInText, pluralise } from "@/lib/format";
 import { listCategoriesWithCounts } from "@/server/services/categories";
 import { FREE_SHIPPING_THRESHOLD } from "@/server/services/pricing";
@@ -57,12 +54,7 @@ export default async function Home() {
         ))
       ) : (
         <p className="mx-auto w-full max-w-[1400px] px-4 pb-16 text-lg sm:px-6">
-          The shelves are empty. Run <code>npm run seed</code> to stock the demo
-          catalog, or add products from the{" "}
-          <Link href="/admin" className={LINK_CLASS}>
-            admin area
-          </Link>
-          .
+          The shelves are empty right now. Check back soon.
         </p>
       )}
     </main>

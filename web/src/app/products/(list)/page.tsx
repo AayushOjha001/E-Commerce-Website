@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Form from "next/form";
 import Link from "next/link";
+import { redirect } from "next/navigation";
 
 import { AutoSubmitSelect } from "@/components/auto-submit-select";
 import { Pagination } from "@/components/pagination";
@@ -11,24 +12,29 @@ import { departmentClass } from "@/lib/department";
 import { pluralise } from "@/lib/format";
 import { parseCatalogPageParams } from "@/server/services/catalog-query";
 import {
+  getCategoryBySlug,
   listCategoriesWithCounts,
   type CategoryWithCount,
 } from "@/server/services/categories";
 import {
   listProducts,
   toPublicPage,
+  type ListProductsOptions,
   type ProductSort,
 } from "@/server/services/products";
 
 const SORT_LABELS: Partial<Record<ProductSort, string>> = {
-  newest: "Newest",
   "price-asc": "Price, low to high",
   "price-desc": "Price, high to low",
   rating: "Highest rated",
 };
 
-function pageTitle(search: string | undefined, category?: CategoryWithCount) {
+function pageTitle(
+  { search, category: slug }: ListProductsOptions,
+  category?: CategoryWithCount,
+) {
   if (search) return `Results for “${search}”`;
+  if (slug && !category) return "We can't find that department";
   return category?.name ?? "All products";
 }
 
@@ -44,8 +50,7 @@ export async function generateMetadata(
     return { title: `Results for ${search}`, robots: { index: false } };
   }
 
-  const categories = slug ? await listCategoriesWithCounts() : [];
-  const category = categories.find((entry) => entry.slug === slug);
+  const category = slug ? await getCategoryBySlug(slug) : null;
 
   return {
     title: category?.name ?? "All products",
@@ -61,6 +66,12 @@ export default async function ProductsPage(props: PageProps<"/products">) {
     listProducts(options).then(toPublicPage),
   ]);
 
+  // Past the last page, which an old bookmark or a shrunken list can reach.
+  // There is nothing to show here and no pagination to get back with.
+  if (page.total > 0 && page.items.length === 0) {
+    redirect(catalogHref(options, { page: page.totalPages }));
+  }
+
   const activeCategory = categories.find(
     (category) => category.slug === options.category,
   );
@@ -73,14 +84,14 @@ export default async function ProductsPage(props: PageProps<"/products">) {
 
   return (
     <main className="mx-auto w-full max-w-[1400px] px-4 pt-6 pb-12 sm:px-6">
-      <PageTitle>{pageTitle(options.search, activeCategory)}</PageTitle>
+      <PageTitle>{pageTitle(options, activeCategory)}</PageTitle>
       <p className="mt-2 text-lg text-ink-soft" role="status">
         {pluralise(page.total, "product")}
       </p>
 
       <div className="mt-8 grid gap-8 lg:grid-cols-[240px_1fr]">
         <aside className="space-y-8">
-          <nav aria-label="Departments">
+          <nav aria-label="Filter by department">
             <h2 className="font-semibold">Departments</h2>
             <ul className="mt-2 flex flex-wrap gap-x-4 gap-y-1 lg:block lg:space-y-1">
               <li>
@@ -115,7 +126,14 @@ export default async function ProductsPage(props: PageProps<"/products">) {
             </ul>
           </nav>
 
-          <Form action="/products" className="space-y-4">
+          {/* Keyed on the query. These inputs are uncontrolled and a query-only
+              navigation keeps them mounted, so without the key they would hold
+              stale values and the next Apply would quietly restore them. */}
+          <Form
+            key={catalogHref(options)}
+            action="/products"
+            className="space-y-4"
+          >
             {options.search ? (
               <input type="hidden" name="search" value={options.search} />
             ) : null}
@@ -136,13 +154,11 @@ export default async function ProductsPage(props: PageProps<"/products">) {
                 <option value="">
                   {options.search ? "Best match" : "Newest"}
                 </option>
-                {Object.entries(SORT_LABELS)
-                  .filter(([value]) => value !== "newest")
-                  .map(([value, label]) => (
-                    <option key={value} value={value}>
-                      {label}
-                    </option>
-                  ))}
+                {Object.entries(SORT_LABELS).map(([value, label]) => (
+                  <option key={value} value={value}>
+                    {label}
+                  </option>
+                ))}
               </AutoSubmitSelect>
             </div>
 
@@ -191,7 +207,10 @@ export default async function ProductsPage(props: PageProps<"/products">) {
           </Form>
         </aside>
 
-        <section aria-label="Products" className="min-w-0">
+        <section aria-labelledby="results" className="min-w-0">
+          <h2 id="results" className="sr-only">
+            Products
+          </h2>
           {page.items.length > 0 ? (
             <>
               <ProductGrid products={page.items} />

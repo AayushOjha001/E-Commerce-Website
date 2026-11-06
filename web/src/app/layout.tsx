@@ -3,6 +3,7 @@ import { Archivo } from "next/font/google";
 import "./globals.css";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
+import { siteUrl } from "@/lib/site-url";
 
 // One family, two voices: the `wdth` axis is what makes the Expanded display
 // style possible, and it has to be requested explicitly or only `wght` ships.
@@ -13,6 +14,7 @@ const archivo = Archivo({
 });
 
 export const metadata: Metadata = {
+  metadataBase: siteUrl(),
   title: {
     default: "E-Shop",
     template: "%s | E-Shop",

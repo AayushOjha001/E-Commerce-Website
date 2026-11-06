@@ -5,7 +5,9 @@ export default function ProductsLoading() {
       aria-busy="true"
       className="mx-auto w-full max-w-[1400px] px-4 pt-6 pb-12 sm:px-6"
     >
-      <p className="display text-3xl text-ink/30 sm:text-5xl">Loading products</p>
+      <p role="status" className="display text-3xl text-ink-soft sm:text-5xl">
+        Loading products
+      </p>
 
       <div className="mt-20 grid gap-8 lg:grid-cols-[240px_1fr]">
         <div aria-hidden className="hidden h-96 bg-ink/5 lg:block" />

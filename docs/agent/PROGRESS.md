@@ -189,3 +189,49 @@ while the session that made the change survives.
 
 **Verified:** 408 tests with `REQUIRE_DB=1`, lint, typecheck and build. Pages checked in Chrome at
 1400px and 390px with no console errors and no horizontal overflow.
+
+**Batch 4 reviewer pass:** `CHANGES_REQUIRED`. All must-fix items are resolved on the Batch 5 branch,
+because Batch 5 work was already stacked on top. Commit `fix(web): address Batch 4 review findings`.
+
+1. `/products?page=999` said "There are no products yet." under "12 products", with no way back. Now
+   redirects to the last page.
+2. Filter inputs kept stale values after a query-only navigation, so the next Apply silently restored
+   them. The form is keyed on the query.
+3. `error.tsx` used `reset`, which does not refetch in Next 16, so "Try again" did nothing for a
+   database failure. Uses `retry`.
+4. Social and JSON-LD images resolved to localhost when self-hosted. Added `SITE_URL`.
+5. A category named "Constructor" lost its colour, because a plain object lookup found
+   `Object.prototype.constructor`. Now a `Map`.
+6. `?limit=` was honoured by the page but dropped from its links, skipping products. API-only now.
+7. Searches past 100 characters silently showed the whole catalog. Added `maxLength`.
+8. Several tests proved nothing. Rewrote them, and extracted `productJsonLd()` so the escaping that
+   prevents script injection can be tested.
+
+**Accepted, not changed:** the home page runs a few queries per shelf. With a handful of departments
+that is cheaper than the code needed to avoid it. Seeded images are SVGs, which social crawlers may
+not render; that matters only once there are real product photos.
+
+### Batch 5 — Cart, checkout, orders ✅
+
+- **T5.1, T5.3 to T5.6** — Cart and order routes, mock provider behind `PaymentProvider`, and
+  `payOrder`, where a filter on `isPaid` settles simultaneous attempts. Declines stay pending and
+  retryable. Result: ✅ · commit `5eebf41`
+- **T5.2, T5.7** — Add to cart, optimistic cart, checkout, order pages, account page. Result: ✅ ·
+  commit `8625c57`
+- **T5.8** — Stock rejection, total correctness, IDOR denial, empty-cart rejection, plus server action
+  tests. Result: ✅
+
+**Found by looking at real pages:** a validation error reset the chosen payment method to the first
+option, because React resets a form after its action runs. Someone who picked the declining test
+payment would have paid on resubmit. The action now echoes the choice back. Order lines also used a
+department colour for a snapshot that records no department, so they are neutral now.
+
+**Decision D18:** the mock offers named test outcomes rather than a card form, so the shop never
+collects anything resembling card details.
+
+**Decision D19:** changing a password requires the current password in the account UI. The older
+`PATCH /api/users/profile` does not; that is closed in T8.3.
+
+**Verified:** 479 tests with `REQUIRE_DB=1`, lint, typecheck. A full purchase ran in Chrome with no
+console errors: guest redirect, sign-up, add to cart, quantity change, address validation, declined
+payment, retry, order history, profile update, wrong and right password change.

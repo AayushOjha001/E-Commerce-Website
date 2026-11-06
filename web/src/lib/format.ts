@@ -15,7 +15,7 @@ export function formatPriceInText(amount: number): string {
     : formatPrice(amount);
 }
 
-const dateFormatter =new Intl.DateTimeFormat("en-US", {
+const dateFormatter = new Intl.DateTimeFormat("en-US", {
   year: "numeric",
   month: "short",
   day: "numeric",
