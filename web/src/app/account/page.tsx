@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 import { requireUserForPage } from "@/server/auth/session";
 
 export const metadata: Metadata = {
-  title: "Your account · E-Shop",
+  title: "Your account",
 };
 
 /**

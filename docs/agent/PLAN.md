@@ -66,13 +66,13 @@ all pass; `/api/health` reports a live DB; `backend/` + `frontend/` still run.
 - [x] **T3.5** — Login/register/logout UI (ports **P4/P5**) as server actions; auth state in the header (fixes **C1**).
 - [x] **T3.6** — Tests: register/login/logout, wrong password, protected-route redirect, non-admin blocked from admin.
 
-## Batch 4 — Catalog
-- [ ] **T4.1** — `GET /api/products` with **pagination, search, category filter, sort** (fixes **B5**/R5 gap).
-- [ ] **T4.2** — `GET /api/products/[id]` — the route that never worked (fixes **B1**, **B7**).
-- [ ] **T4.3** — Home/catalog page as a server component with real DB data + search/filter/pagination UI (replaces **P1**).
-- [ ] **T4.4** — Product detail page, dynamic route + `generateMetadata` for SEO (replaces **P2**). Uses `_id` correctly (fixes **C2**).
-- [ ] **T4.5** — `loading.tsx`, `error.tsx`, `not-found.tsx` for the shop segment.
-- [ ] **T4.6** — Tests: list/filter/pagination service, detail 404 path.
+## Batch 4 — Catalog ✅ complete
+- [x] **T4.1** — `GET /api/products` with **pagination, search, category filter, sort** (fixes **B5**/R5 gap).
+- [x] **T4.2** — `GET /api/products/[id]` — the route that never worked (fixes **B1**, **B7**).
+- [x] **T4.3** — Home/catalog page as a server component with real DB data + search/filter/pagination UI (replaces **P1**).
+- [x] **T4.4** — Product detail page, dynamic route + `generateMetadata` for SEO (replaces **P2**). Uses `_id` correctly (fixes **C2**).
+- [x] **T4.5** — `loading.tsx`, `error.tsx`, `not-found.tsx` for the shop segment.
+- [x] **T4.6** — Tests: list/filter/pagination service, detail 404 path.
 
 ## Batch 5 — Cart, checkout, orders
 - [ ] **T5.1** — Expose the cart service (built in T2.4) via `GET/POST /api/cart` and `DELETE /api/cart/[productId]` (ports **R8–R10**). Validation, stock checks and correct qty incrementing are already done and tested.

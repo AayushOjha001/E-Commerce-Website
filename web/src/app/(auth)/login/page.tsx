@@ -7,7 +7,7 @@ import { loginAction } from "@/server/auth/actions";
 import { getCurrentUser } from "@/server/auth/session";
 
 export const metadata: Metadata = {
-  title: "Sign in · E-Shop",
+  title: "Sign in",
   description: "Sign in to your E-Shop account.",
 };
 

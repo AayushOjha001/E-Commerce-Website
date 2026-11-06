@@ -157,3 +157,35 @@ build and seed clean. Live against a production build: signed-out `/account` →
 `/login?next=%2Faccount`; a deleted account's live cookie → 307 (was 500) while the API gives 401
 JSON; `/admin` → 404 for a customer, reachable for an admin; a stolen cookie dies on password change
 while the session that made the change survives.
+
+## 2026-11-06
+
+- **Audit of the branch state** — `master` held only Batch 1, because PRs #2 and #3 merged into side
+  branches. Opened PR #4 to bring them across, recorded as BL-6. Later batches target `master`
+  directly, since stacking PR bases is what caused this.
+- **Design** — Vendored the public `frontend-design` and `webapp-testing` skills and wrote
+  `DESIGN.md`. Replaced the gradient placeholder images with twelve line drawings.
+
+### Batch 4 — Catalog ✅
+
+- **T4.1, T4.2** — `GET /api/products`, `/api/products/[id]`, `/api/categories`, with one query
+  parser that is strict for the API and lenient for pages. Result: ✅
+- **T4.3** — Home page as department shelves, `/products` with filters, sort and pagination.
+  Result: ✅
+- **T4.4** — Product page with `generateMetadata` and JSON-LD. Result: ✅
+- **T4.5, T4.6** — Loading, error and not-found states, plus tests. Result: ✅
+
+**Found by looking at real pages, not by the test suite:**
+
+1. `/products/nope` rendered the not-found page with **status 200**. `products/loading.tsx` also
+   wrapped `[slug]`, so the response started streaming before the lookup failed. Moved the listing
+   into a `(list)` route group, which keeps the URL and gives `[slug]` a real 404.
+2. The shelf overflowed phones by 178px, and its drawings and labels were two separate scrollers
+   that would drift apart. Rebuilt so each product is one link and the plank is a background layer.
+3. A sold-out price was struck through, which reads as a discount.
+
+**Environment note:** something unrelated holds port 3000 on this machine, so `next dev` lands on
+3001. Check the printed port before testing.
+
+**Verified:** 408 tests with `REQUIRE_DB=1`, lint, typecheck and build. Pages checked in Chrome at
+1400px and 390px with no console errors and no horizontal overflow.

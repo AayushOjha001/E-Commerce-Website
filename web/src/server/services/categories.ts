@@ -4,6 +4,25 @@ import { notFound } from "./errors";
 
 export type CategoryWithCount = Category & { productCount: number };
 
+/** A category as it may cross a trust boundary: plain JSON values only. */
+export type PublicCategory = {
+  id: string;
+  name: string;
+  slug: string;
+  description?: string;
+  productCount: number;
+};
+
+export function toPublicCategory(category: CategoryWithCount): PublicCategory {
+  return {
+    id: String(category._id),
+    name: category.name,
+    slug: category.slug,
+    description: category.description,
+    productCount: category.productCount,
+  };
+}
+
 /** Lists categories alphabetically. */
 export async function listCategories(): Promise<Category[]> {
   await connectDB();

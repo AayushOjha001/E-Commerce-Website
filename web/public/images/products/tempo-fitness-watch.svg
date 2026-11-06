@@ -1,9 +1,13 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 600" width="600" height="600" role="img" aria-label="Tempo Watch">
-  <defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
-    <stop offset="0" stop-color="#4338ca"/><stop offset="1" stop-color="#a5b4fc"/>
-  </linearGradient></defs>
-  <rect width="600" height="600" fill="url(#g)"/>
-  <circle cx="300" cy="250" r="110" fill="#ffffff" fill-opacity="0.18"/>
-  <text x="300" y="268" text-anchor="middle" font-family="system-ui,-apple-system,Segoe UI,Roboto,sans-serif" font-size="52" font-weight="700" fill="#ffffff">Tempo</text>
-  <text x="300" y="322" text-anchor="middle" font-family="system-ui,-apple-system,Segoe UI,Roboto,sans-serif" font-size="30" fill="#ffffff" fill-opacity="0.85">Watch</text>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 600" width="600" height="600" role="img" aria-label="Tempo Fitness Watch">
+  <g fill="#fff" stroke="#16233F" stroke-width="8" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M236 240L250 84Q252 70 268 70H332Q348 70 350 84L364 240Z"/>
+    <path d="M236 404L250 524Q252 540 268 540H332Q348 540 350 524L364 404Z"/>
+    <circle cx="300" cy="456" r="7" fill="#16233F" stroke="none"/>
+    <circle cx="300" cy="486" r="7" fill="#16233F" stroke="none"/>
+    <circle cx="300" cy="516" r="7" fill="#16233F" stroke="none"/>
+    <rect x="184" y="212" width="232" height="220" rx="56"/>
+    <rect x="202" y="230" width="196" height="184" rx="40" fill="#16233F" stroke="none"/>
+    <path d="M222 326h44l18-52 32 104 22-52h40" fill="none" stroke="#fff" stroke-width="7"/>
+    <rect x="416" y="296" width="16" height="50" rx="7"/>
+  </g>
 </svg>

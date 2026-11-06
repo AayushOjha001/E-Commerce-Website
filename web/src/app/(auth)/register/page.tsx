@@ -7,7 +7,7 @@ import { registerAction } from "@/server/auth/actions";
 import { getCurrentUser } from "@/server/auth/session";
 
 export const metadata: Metadata = {
-  title: "Create an account · E-Shop",
+  title: "Create an account",
   description: "Create an E-Shop account.",
 };
 

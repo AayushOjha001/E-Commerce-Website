@@ -1,9 +1,40 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 600" width="600" height="600" role="img" aria-label="Glide Keyboard">
-  <defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
-    <stop offset="0" stop-color="#b45309"/><stop offset="1" stop-color="#fcd34d"/>
-  </linearGradient></defs>
-  <rect width="600" height="600" fill="url(#g)"/>
-  <circle cx="300" cy="250" r="110" fill="#ffffff" fill-opacity="0.18"/>
-  <text x="300" y="268" text-anchor="middle" font-family="system-ui,-apple-system,Segoe UI,Roboto,sans-serif" font-size="52" font-weight="700" fill="#ffffff">Glide</text>
-  <text x="300" y="322" text-anchor="middle" font-family="system-ui,-apple-system,Segoe UI,Roboto,sans-serif" font-size="30" fill="#ffffff" fill-opacity="0.85">Keyboard</text>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 600" width="600" height="600" role="img" aria-label="Glide Mechanical Keyboard">
+  <g fill="#fff" stroke="#16233F" stroke-width="8" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="50" y="326" width="500" height="214" rx="22"/>
+    <rect x="66.0" y="346.0" width="38.0" height="38" rx="7" fill="#16233F" stroke-width="5"/>
+    <rect x="109.0" y="346.0" width="38.0" height="38" rx="7" fill="#fff" stroke-width="5"/>
+    <rect x="152.0" y="346.0" width="38.0" height="38" rx="7" fill="#fff" stroke-width="5"/>
+    <rect x="195.0" y="346.0" width="38.0" height="38" rx="7" fill="#fff" stroke-width="5"/>
+    <rect x="238.0" y="346.0" width="38.0" height="38" rx="7" fill="#fff" stroke-width="5"/>
+    <rect x="281.0" y="346.0" width="38.0" height="38" rx="7" fill="#fff" stroke-width="5"/>
+    <rect x="324.0" y="346.0" width="38.0" height="38" rx="7" fill="#fff" stroke-width="5"/>
+    <rect x="367.0" y="346.0" width="38.0" height="38" rx="7" fill="#fff" stroke-width="5"/>
+    <rect x="410.0" y="346.0" width="38.0" height="38" rx="7" fill="#fff" stroke-width="5"/>
+    <rect x="453.0" y="346.0" width="38.0" height="38" rx="7" fill="#fff" stroke-width="5"/>
+    <rect x="496.0" y="346.0" width="38.0" height="38" rx="7" fill="#fff" stroke-width="5"/>
+    <rect x="66.0" y="389.0" width="59.5" height="38" rx="7" fill="#fff" stroke-width="5"/>
+    <rect x="130.5" y="389.0" width="38.0" height="38" rx="7" fill="#fff" stroke-width="5"/>
+    <rect x="173.5" y="389.0" width="38.0" height="38" rx="7" fill="#fff" stroke-width="5"/>
+    <rect x="216.5" y="389.0" width="38.0" height="38" rx="7" fill="#fff" stroke-width="5"/>
+    <rect x="259.5" y="389.0" width="38.0" height="38" rx="7" fill="#fff" stroke-width="5"/>
+    <rect x="302.5" y="389.0" width="38.0" height="38" rx="7" fill="#fff" stroke-width="5"/>
+    <rect x="345.5" y="389.0" width="38.0" height="38" rx="7" fill="#fff" stroke-width="5"/>
+    <rect x="388.5" y="389.0" width="38.0" height="38" rx="7" fill="#fff" stroke-width="5"/>
+    <rect x="431.5" y="389.0" width="38.0" height="38" rx="7" fill="#fff" stroke-width="5"/>
+    <rect x="474.5" y="389.0" width="59.5" height="38" rx="7" fill="#fff" stroke-width="5"/>
+    <rect x="66.0" y="432.0" width="72.4" height="38" rx="7" fill="#fff" stroke-width="5"/>
+    <rect x="143.4" y="432.0" width="38.0" height="38" rx="7" fill="#fff" stroke-width="5"/>
+    <rect x="186.4" y="432.0" width="38.0" height="38" rx="7" fill="#fff" stroke-width="5"/>
+    <rect x="229.4" y="432.0" width="38.0" height="38" rx="7" fill="#fff" stroke-width="5"/>
+    <rect x="272.4" y="432.0" width="38.0" height="38" rx="7" fill="#fff" stroke-width="5"/>
+    <rect x="315.4" y="432.0" width="38.0" height="38" rx="7" fill="#fff" stroke-width="5"/>
+    <rect x="358.4" y="432.0" width="38.0" height="38" rx="7" fill="#fff" stroke-width="5"/>
+    <rect x="401.4" y="432.0" width="38.0" height="38" rx="7" fill="#fff" stroke-width="5"/>
+    <rect x="444.4" y="432.0" width="89.6" height="38" rx="7" fill="#16233F" stroke-width="5"/>
+    <rect x="66.0" y="475.0" width="50.9" height="38" rx="7" fill="#fff" stroke-width="5"/>
+    <rect x="121.9" y="475.0" width="50.9" height="38" rx="7" fill="#fff" stroke-width="5"/>
+    <rect x="177.8" y="475.0" width="244.4" height="38" rx="7" fill="#fff" stroke-width="5"/>
+    <rect x="427.2" y="475.0" width="50.9" height="38" rx="7" fill="#fff" stroke-width="5"/>
+    <rect x="483.1" y="475.0" width="50.9" height="38" rx="7" fill="#fff" stroke-width="5"/>
+  </g>
 </svg>

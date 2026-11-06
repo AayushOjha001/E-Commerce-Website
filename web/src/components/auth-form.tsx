@@ -3,6 +3,13 @@
 import Link from "next/link";
 import { useActionState } from "react";
 
+import {
+  INPUT_CLASS,
+  LINK_CLASS,
+  Notice,
+  PageTitle,
+  buttonClass,
+} from "@/components/ui";
 import type { AuthFormState } from "@/server/auth/actions";
 
 type Field = {
@@ -47,15 +54,12 @@ export function AuthForm({
 
   return (
     <div className="mx-auto w-full max-w-md px-4 py-12">
-      <h1 className="mb-6 text-2xl font-bold tracking-tight">{title}</h1>
+      <PageTitle className="mb-8">{title}</PageTitle>
 
       {state.error ? (
-        <p
-          role="alert"
-          className="mb-4 rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800 dark:border-red-900 dark:bg-red-950 dark:text-red-200"
-        >
-          {state.error}
-        </p>
+        <div className="mb-4">
+          <Notice>{state.error}</Notice>
+        </div>
       ) : null}
 
       <form action={formAction} className="space-y-4" noValidate>
@@ -69,7 +73,7 @@ export function AuthForm({
             <div key={field.name}>
               <label
                 htmlFor={field.name}
-                className="mb-1 block text-sm font-medium"
+                className="mb-1 block font-medium"
               >
                 {field.label}
               </label>
@@ -82,10 +86,10 @@ export function AuthForm({
                 defaultValue={state.values?.[field.name] ?? ""}
                 aria-invalid={fieldError ? true : undefined}
                 aria-describedby={fieldError ? errorId : undefined}
-                className="w-full rounded-md border border-black/15 bg-transparent px-3 py-2 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/30 dark:border-white/20"
+                className={INPUT_CLASS}
               />
               {fieldError ? (
-                <p id={errorId} className="mt-1 text-sm text-red-700 dark:text-red-300">
+                <p id={errorId} className="mt-1 text-sm font-medium text-danger">
                   {fieldError}
                 </p>
               ) : null}
@@ -96,18 +100,15 @@ export function AuthForm({
         <button
           type="submit"
           disabled={isPending}
-          className="w-full rounded-md bg-blue-600 px-4 py-2 font-medium text-white transition hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-60"
+          className={buttonClass({ className: "w-full" })}
         >
           {isPending ? pendingLabel : submitLabel}
         </button>
       </form>
 
-      <p className="mt-6 text-center text-sm text-black/60 dark:text-white/60">
+      <p className="mt-6 text-ink-soft">
         {footer.prompt}{" "}
-        <Link
-          href={footer.href}
-          className="font-medium text-blue-600 underline underline-offset-4 hover:text-blue-500"
-        >
+        <Link href={footer.href} className={LINK_CLASS}>
           {footer.linkLabel}
         </Link>
       </p>
