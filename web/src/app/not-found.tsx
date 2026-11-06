@@ -1,5 +1,7 @@
 import Link from "next/link";
 
+import { PageTitle, buttonClass } from "@/components/ui";
+
 /**
  * The 404 page.
  *
@@ -8,16 +10,13 @@ import Link from "next/link";
  */
 export default function NotFound() {
   return (
-    <main className="mx-auto w-full max-w-2xl px-4 py-16 text-center">
-      <h1 className="text-3xl font-bold tracking-tight">Page not found</h1>
-      <p className="mt-3 text-black/60 dark:text-white/60">
-        That page does not exist, or you do not have access to it.
+    <main className="mx-auto w-full max-w-[1400px] px-4 py-16 sm:px-6">
+      <PageTitle>That page isn&apos;t on our shelves</PageTitle>
+      <p className="mt-4 max-w-xl text-lg text-ink-soft">
+        The link may be old, or you may not have access to it.
       </p>
-      <Link
-        href="/"
-        className="mt-6 inline-block rounded-md bg-blue-600 px-4 py-2 font-medium text-white transition hover:bg-blue-500"
-      >
-        Back to the shop
+      <Link href="/products" className={buttonClass({ className: "mt-6" })}>
+        Browse all products
       </Link>
     </main>
   );

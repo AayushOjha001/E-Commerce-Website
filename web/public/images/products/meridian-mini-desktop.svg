@@ -1,9 +1,13 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 600" width="600" height="600" role="img" aria-label="Meridian Mini Desktop">
-  <defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
-    <stop offset="0" stop-color="#047857"/><stop offset="1" stop-color="#6ee7b7"/>
-  </linearGradient></defs>
-  <rect width="600" height="600" fill="url(#g)"/>
-  <circle cx="300" cy="250" r="110" fill="#ffffff" fill-opacity="0.18"/>
-  <text x="300" y="268" text-anchor="middle" font-family="system-ui,-apple-system,Segoe UI,Roboto,sans-serif" font-size="52" font-weight="700" fill="#ffffff">Meridian Mini</text>
-  <text x="300" y="322" text-anchor="middle" font-family="system-ui,-apple-system,Segoe UI,Roboto,sans-serif" font-size="30" fill="#ffffff" fill-opacity="0.85">Desktop</text>
+  <g fill="#fff" stroke="#16233F" stroke-width="8" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M120 320L204 244H500L416 320Z"/>
+    <path d="M416 320L500 244V464L416 540Z"/>
+    <rect x="120" y="320" width="296" height="220" rx="10"/>
+    <circle cx="178" cy="382" r="26"/>
+    <circle cx="178" cy="382" r="9" fill="#16233F" stroke="none"/>
+    <rect x="160" y="456" width="56" height="20" rx="4"/>
+    <rect x="232" y="456" width="56" height="20" rx="4"/>
+    <path d="M250 366h130M250 390h130M250 414h130" fill="none"/>
+    <path d="M446 322l28-26M446 376l28-26M446 430l28-26" fill="none"/>
+  </g>
 </svg>

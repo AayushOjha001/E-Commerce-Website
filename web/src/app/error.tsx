@@ -1,5 +1,7 @@
 "use client";
 
+import { PageTitle, buttonClass } from "@/components/ui";
+
 /**
  * Error boundary for the app.
  *
@@ -10,15 +12,16 @@
  */
 export default function AppError({ reset }: { error: Error; reset: () => void }) {
   return (
-    <main className="mx-auto w-full max-w-2xl px-4 py-16 text-center">
-      <h1 className="text-3xl font-bold tracking-tight">Something went wrong</h1>
-      <p className="mt-3 text-black/60 dark:text-white/60">
-        That request could not be completed. Please try again.
+    <main className="mx-auto w-full max-w-[1400px] px-4 py-16 sm:px-6">
+      <PageTitle>This page failed to load</PageTitle>
+      <p className="mt-4 max-w-xl text-lg text-ink-soft">
+        The shop could not finish that request. Try again, and if it keeps
+        happening, come back in a few minutes.
       </p>
       <button
         type="button"
         onClick={reset}
-        className="mt-6 rounded-md bg-blue-600 px-4 py-2 font-medium text-white transition hover:bg-blue-500"
+        className={buttonClass({ className: "mt-6" })}
       >
         Try again
       </button>

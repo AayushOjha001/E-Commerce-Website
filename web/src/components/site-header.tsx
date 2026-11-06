@@ -1,40 +1,99 @@
+import Form from "next/form";
 import Link from "next/link";
 
+import { buttonClass, INPUT_CLASS } from "@/components/ui";
 import { logoutAction } from "@/server/auth/actions";
 import { getCurrentUser } from "@/server/auth/session";
+import { getCart } from "@/server/services/cart";
 
 /**
  * Site header.
  *
  * A server component, so it reads the session directly and renders the right
- * links on the first paint — no loading flicker and no client-side auth state to
+ * links on the first paint: no loading flicker and no client-side auth state to
  * drift. The legacy Navbar.jsx was static: it always showed "Login" and
  * "Register", with no idea whether anyone was signed in (audit C1).
+ *
+ * The header renders inside the root layout, above every error boundary, so a
+ * throw here would blank the whole site. If the database is down it degrades to
+ * the signed-out view and the page below reports the failure itself.
  */
+async function loadHeaderState() {
+  try {
+    const user = await getCurrentUser();
+    if (!user) return { user: null, cartCount: 0 };
+
+    const cart = await getCart(user.id);
+    return { user, cartCount: cart.itemCount };
+  } catch (error) {
+    console.error("[header] could not load session:", error);
+    return { user: null, cartCount: 0 };
+  }
+}
+
 export async function SiteHeader() {
-  const user = await getCurrentUser();
+  const { user, cartCount } = await loadHeaderState();
 
   return (
-    <header className="border-b border-black/10 dark:border-white/15">
-      <nav className="mx-auto flex max-w-5xl items-center justify-between gap-4 px-4 py-3">
-        <Link href="/" className="text-lg font-bold tracking-tight">
+    <header className="bg-paper">
+      <nav
+        aria-label="Main"
+        className="mx-auto flex max-w-[1400px] flex-wrap items-center gap-x-6 gap-y-3 px-4 py-4 sm:px-6"
+      >
+        <Link href="/" className="display text-2xl sm:text-3xl">
           E-Shop
         </Link>
 
-        <div className="flex items-center gap-4 text-sm">
-          <Link href="/cart" className="hover:underline underline-offset-4">
+        <Link
+          href="/products"
+          className="font-medium underline-offset-4 hover:underline"
+        >
+          All products
+        </Link>
+
+        <Form
+          action="/products"
+          role="search"
+          className="order-last w-full md:order-none md:w-auto md:max-w-sm md:flex-1"
+        >
+          <label htmlFor="site-search" className="sr-only">
+            Search products
+          </label>
+          <input
+            id="site-search"
+            name="search"
+            type="search"
+            placeholder="Search products"
+            className={INPUT_CLASS}
+          />
+        </Form>
+
+        <div className="ml-auto flex items-center gap-4 text-sm sm:text-base">
+          <Link href="/cart" className="font-medium underline-offset-4 hover:underline">
             Cart
+            {cartCount > 0 ? (
+              <span className="price ml-1.5 inline-block rounded-md bg-ink px-1.5 text-sm font-semibold text-paper">
+                <span className="sr-only">, items: </span>
+                {cartCount}
+              </span>
+            ) : null}
           </Link>
 
           {user ? (
             <>
               {user.role === "admin" ? (
-                <Link href="/admin" className="hover:underline underline-offset-4">
+                <Link
+                  href="/admin"
+                  className="font-medium underline-offset-4 hover:underline"
+                >
                   Admin
                 </Link>
               ) : null}
 
-              <Link href="/account" className="hover:underline underline-offset-4">
+              <Link
+                href="/account"
+                className="font-medium underline-offset-4 hover:underline"
+              >
                 {user.name}
               </Link>
 
@@ -43,7 +102,7 @@ export async function SiteHeader() {
               <form action={logoutAction}>
                 <button
                   type="submit"
-                  className="rounded-md border border-black/15 px-3 py-1 transition hover:bg-black/5 dark:border-white/20 dark:hover:bg-white/10"
+                  className={buttonClass({ variant: "secondary", size: "sm" })}
                 >
                   Sign out
                 </button>
@@ -51,13 +110,13 @@ export async function SiteHeader() {
             </>
           ) : (
             <>
-              <Link href="/login" className="hover:underline underline-offset-4">
+              <Link
+                href="/login"
+                className="font-medium underline-offset-4 hover:underline"
+              >
                 Sign in
               </Link>
-              <Link
-                href="/register"
-                className="rounded-md bg-blue-600 px-3 py-1 font-medium text-white transition hover:bg-blue-500"
-              >
+              <Link href="/register" className={buttonClass({ size: "sm" })}>
                 Register
               </Link>
             </>

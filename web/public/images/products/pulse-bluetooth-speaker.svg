@@ -1,9 +1,64 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 600" width="600" height="600" role="img" aria-label="Pulse Speaker">
-  <defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
-    <stop offset="0" stop-color="#0ea5e9"/><stop offset="1" stop-color="#7dd3fc"/>
-  </linearGradient></defs>
-  <rect width="600" height="600" fill="url(#g)"/>
-  <circle cx="300" cy="250" r="110" fill="#ffffff" fill-opacity="0.18"/>
-  <text x="300" y="268" text-anchor="middle" font-family="system-ui,-apple-system,Segoe UI,Roboto,sans-serif" font-size="52" font-weight="700" fill="#ffffff">Pulse</text>
-  <text x="300" y="322" text-anchor="middle" font-family="system-ui,-apple-system,Segoe UI,Roboto,sans-serif" font-size="30" fill="#ffffff" fill-opacity="0.85">Speaker</text>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 600" width="600" height="600" role="img" aria-label="Pulse Bluetooth Speaker">
+  <g fill="#fff" stroke="#16233F" stroke-width="8" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M238 262C238 190 362 190 362 262" fill="none" stroke-width="26"/>
+    <path d="M238 262C238 190 362 190 362 262" fill="none" stroke="#fff" stroke-width="10"/>
+    <rect x="160" y="250" width="280" height="290" rx="56"/>
+    <circle cx="300" cy="392" r="104"/>
+    <circle cx="328.7" cy="392.0" r="3.5" fill="#16233F" stroke="none"/>
+    <circle cx="322.0" cy="410.4" r="3.5" fill="#16233F" stroke="none"/>
+    <circle cx="305.0" cy="420.2" r="3.5" fill="#16233F" stroke="none"/>
+    <circle cx="285.7" cy="416.8" r="3.5" fill="#16233F" stroke="none"/>
+    <circle cx="273.1" cy="401.8" r="3.5" fill="#16233F" stroke="none"/>
+    <circle cx="273.1" cy="382.2" r="3.5" fill="#16233F" stroke="none"/>
+    <circle cx="285.7" cy="367.2" r="3.5" fill="#16233F" stroke="none"/>
+    <circle cx="305.0" cy="363.8" r="3.5" fill="#16233F" stroke="none"/>
+    <circle cx="322.0" cy="373.6" r="3.5" fill="#16233F" stroke="none"/>
+    <circle cx="357.3" cy="392.0" r="3.5" fill="#16233F" stroke="none"/>
+    <circle cx="353.9" cy="411.6" r="3.5" fill="#16233F" stroke="none"/>
+    <circle cx="343.9" cy="428.9" r="3.5" fill="#16233F" stroke="none"/>
+    <circle cx="328.7" cy="441.7" r="3.5" fill="#16233F" stroke="none"/>
+    <circle cx="310.0" cy="448.5" r="3.5" fill="#16233F" stroke="none"/>
+    <circle cx="290.0" cy="448.5" r="3.5" fill="#16233F" stroke="none"/>
+    <circle cx="271.3" cy="441.7" r="3.5" fill="#16233F" stroke="none"/>
+    <circle cx="256.1" cy="428.9" r="3.5" fill="#16233F" stroke="none"/>
+    <circle cx="246.1" cy="411.6" r="3.5" fill="#16233F" stroke="none"/>
+    <circle cx="242.7" cy="392.0" r="3.5" fill="#16233F" stroke="none"/>
+    <circle cx="246.1" cy="372.4" r="3.5" fill="#16233F" stroke="none"/>
+    <circle cx="256.1" cy="355.1" r="3.5" fill="#16233F" stroke="none"/>
+    <circle cx="271.3" cy="342.3" r="3.5" fill="#16233F" stroke="none"/>
+    <circle cx="290.0" cy="335.5" r="3.5" fill="#16233F" stroke="none"/>
+    <circle cx="310.0" cy="335.5" r="3.5" fill="#16233F" stroke="none"/>
+    <circle cx="328.7" cy="342.3" r="3.5" fill="#16233F" stroke="none"/>
+    <circle cx="343.9" cy="355.1" r="3.5" fill="#16233F" stroke="none"/>
+    <circle cx="353.9" cy="372.4" r="3.5" fill="#16233F" stroke="none"/>
+    <circle cx="386.0" cy="392.0" r="3.5" fill="#16233F" stroke="none"/>
+    <circle cx="383.7" cy="411.8" r="3.5" fill="#16233F" stroke="none"/>
+    <circle cx="376.9" cy="430.6" r="3.5" fill="#16233F" stroke="none"/>
+    <circle cx="365.9" cy="447.3" r="3.5" fill="#16233F" stroke="none"/>
+    <circle cx="351.4" cy="461.0" r="3.5" fill="#16233F" stroke="none"/>
+    <circle cx="334.1" cy="471.0" r="3.5" fill="#16233F" stroke="none"/>
+    <circle cx="314.9" cy="476.7" r="3.5" fill="#16233F" stroke="none"/>
+    <circle cx="295.0" cy="477.9" r="3.5" fill="#16233F" stroke="none"/>
+    <circle cx="275.3" cy="474.4" r="3.5" fill="#16233F" stroke="none"/>
+    <circle cx="257.0" cy="466.5" r="3.5" fill="#16233F" stroke="none"/>
+    <circle cx="241.0" cy="454.6" r="3.5" fill="#16233F" stroke="none"/>
+    <circle cx="228.1" cy="439.3" r="3.5" fill="#16233F" stroke="none"/>
+    <circle cx="219.2" cy="421.4" r="3.5" fill="#16233F" stroke="none"/>
+    <circle cx="214.6" cy="402.0" r="3.5" fill="#16233F" stroke="none"/>
+    <circle cx="214.6" cy="382.0" r="3.5" fill="#16233F" stroke="none"/>
+    <circle cx="219.2" cy="362.6" r="3.5" fill="#16233F" stroke="none"/>
+    <circle cx="228.1" cy="344.7" r="3.5" fill="#16233F" stroke="none"/>
+    <circle cx="241.0" cy="329.4" r="3.5" fill="#16233F" stroke="none"/>
+    <circle cx="257.0" cy="317.5" r="3.5" fill="#16233F" stroke="none"/>
+    <circle cx="275.3" cy="309.6" r="3.5" fill="#16233F" stroke="none"/>
+    <circle cx="295.0" cy="306.1" r="3.5" fill="#16233F" stroke="none"/>
+    <circle cx="314.9" cy="307.3" r="3.5" fill="#16233F" stroke="none"/>
+    <circle cx="334.1" cy="313.0" r="3.5" fill="#16233F" stroke="none"/>
+    <circle cx="351.4" cy="323.0" r="3.5" fill="#16233F" stroke="none"/>
+    <circle cx="365.9" cy="336.7" r="3.5" fill="#16233F" stroke="none"/>
+    <circle cx="376.9" cy="353.4" r="3.5" fill="#16233F" stroke="none"/>
+    <circle cx="383.7" cy="372.2" r="3.5" fill="#16233F" stroke="none"/>
+    <circle cx="300" cy="392" r="34" fill="#16233F"/>
+    <path d="M250 512h20M290 512h20M330 512h20" fill="none"/>
+  </g>
 </svg>

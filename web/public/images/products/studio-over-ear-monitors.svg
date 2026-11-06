@@ -1,9 +1,12 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 600" width="600" height="600" role="img" aria-label="Studio Monitors">
-  <defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
-    <stop offset="0" stop-color="#8b5cf6"/><stop offset="1" stop-color="#c4b5fd"/>
-  </linearGradient></defs>
-  <rect width="600" height="600" fill="url(#g)"/>
-  <circle cx="300" cy="250" r="110" fill="#ffffff" fill-opacity="0.18"/>
-  <text x="300" y="268" text-anchor="middle" font-family="system-ui,-apple-system,Segoe UI,Roboto,sans-serif" font-size="52" font-weight="700" fill="#ffffff">Studio</text>
-  <text x="300" y="322" text-anchor="middle" font-family="system-ui,-apple-system,Segoe UI,Roboto,sans-serif" font-size="30" fill="#ffffff" fill-opacity="0.85">Monitors</text>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 600" width="600" height="600" role="img" aria-label="Studio Over-Ear Monitors">
+  <g fill="#fff" stroke="#16233F" stroke-width="8" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="190" y="514" width="220" height="26" rx="10"/>
+    <rect x="286" y="166" width="28" height="350"/>
+    <path d="M176 330C176 96 424 96 424 330L396 330C396 138 204 138 204 330Z"/>
+    <rect x="140" y="316" width="78" height="150" rx="16"/>
+    <rect x="382" y="316" width="78" height="150" rx="16"/>
+    <rect x="126" y="340" width="14" height="102" rx="6" fill="#16233F"/>
+    <rect x="460" y="340" width="14" height="102" rx="6" fill="#16233F"/>
+    <path d="M460 442c0 28 40 18 40 50 0 30-30 28-30 48" fill="none"/>
+  </g>
 </svg>

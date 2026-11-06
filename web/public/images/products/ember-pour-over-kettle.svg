@@ -1,9 +1,13 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 600" width="600" height="600" role="img" aria-label="Ember Kettle">
-  <defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
-    <stop offset="0" stop-color="#be123c"/><stop offset="1" stop-color="#fda4af"/>
-  </linearGradient></defs>
-  <rect width="600" height="600" fill="url(#g)"/>
-  <circle cx="300" cy="250" r="110" fill="#ffffff" fill-opacity="0.18"/>
-  <text x="300" y="268" text-anchor="middle" font-family="system-ui,-apple-system,Segoe UI,Roboto,sans-serif" font-size="52" font-weight="700" fill="#ffffff">Ember</text>
-  <text x="300" y="322" text-anchor="middle" font-family="system-ui,-apple-system,Segoe UI,Roboto,sans-serif" font-size="30" fill="#ffffff" fill-opacity="0.85">Kettle</text>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 600" width="600" height="600" role="img" aria-label="Ember Pour-Over Kettle">
+  <g fill="#fff" stroke="#16233F" stroke-width="8" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M398 330C520 318 524 486 416 500" fill="none" stroke-width="32"/>
+    <path d="M398 330C520 318 524 486 416 500" fill="none" stroke="#fff" stroke-width="16"/>
+    <path d="M190 486C96 470 158 322 112 276C96 260 76 256 52 264" fill="none" stroke-width="32"/>
+    <path d="M190 486C96 470 158 322 112 276C96 260 76 256 52 264" fill="none" stroke="#fff" stroke-width="16"/>
+    <path d="M214 300H386L436 512Q442 540 414 540H186Q158 540 164 512Z"/>
+    <rect x="208" y="276" width="184" height="26" rx="12"/>
+    <circle cx="300" cy="258" r="16" fill="#16233F"/>
+    <rect x="256" y="404" width="88" height="56" rx="10"/>
+    <path d="M276 432h48" fill="none"/>
+  </g>
 </svg>

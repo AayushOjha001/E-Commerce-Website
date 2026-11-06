@@ -1,26 +1,89 @@
 @import "tailwindcss";
 
+/*
+ * The design tokens. See docs/agent/DESIGN.md before changing anything here.
+ *
+ * Layout idea: a two-colour printed catalogue. Flat colour fields, one ink,
+ * one action colour. Colour means "which department", everywhere.
+ *
+ * Light only, deliberately: a printed catalogue has one paper stock.
+ */
+@theme {
+  --color-paper: #f3f5f6;
+  --color-ink: #16233f;
+  --color-ink-soft: #4a5874;
+  --color-cobalt: #2340d3;
+  --color-cobalt-deep: #1a2fa3;
+
+  --color-marigold: #f5c543;
+  --color-sky: #b5d5f2;
+  --color-coral: #f4a79d;
+  --color-mint: #94d1ae;
+  --color-lilac: #cbbbf2;
+
+  --color-danger: #a61b1b;
+  --color-danger-wash: #fbe3e0;
+  --color-success: #12663f;
+  --color-success-wash: #d9f0e3;
+
+  --font-sans: var(--font-archivo), "Helvetica Neue", Arial, sans-serif;
+}
+
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  color-scheme: light;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html {
+  background: var(--color-paper);
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--color-paper);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+}
+
+/* The one focus treatment, on everything interactive. */
+:focus-visible {
+  outline: 3px solid var(--color-cobalt);
+  outline-offset: 2px;
+}
+
+/* Over a colour field the cobalt ring can lose contrast, so tiles use ink. */
+[data-field] :focus-visible,
+[data-field]:focus-visible {
+  outline-color: var(--color-ink);
+}
+
+/*
+ * The display voice: Archivo at its widest and heaviest. Used for the wordmark,
+ * page titles, department names and the product name on its own page. Nothing
+ * else, or it stops being a voice and becomes noise.
+ */
+@utility display {
+  font-stretch: 125%;
+  font-weight: 900;
+  letter-spacing: -0.015em;
+  line-height: 1.02;
+  text-wrap: balance;
+}
+
+/* Prices line up in columns. */
+@utility price {
+  font-variant-numeric: tabular-nums;
+}
+
+/* A drawing lifts off its shelf. The only hover animation in the shop. */
+@utility lift {
+  transition: translate 160ms ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }
