@@ -33,10 +33,22 @@ From the repo root:
 docker compose up -d mongo
 ```
 
-This runs MongoDB 7 and maps **host port 27018** → container 27017. Port 27018 rather
-than the default 27017 deliberately, to avoid colliding with any MongoDB you already run.
+This runs MongoDB 7 on **port 27018** as a **single-node replica set**, and initiates the set
+automatically on first start.
 
-Check it: `docker compose ps` should show `ecommerce-mongo` as `healthy`.
+Two deliberate choices:
+
+- **Port 27018**, not the default 27017, to avoid colliding with any MongoDB you already run.
+- **A replica set**, not a standalone mongod, because multi-document transactions require one.
+  A standalone deployment rejects them (`This MongoDB deployment does not support retryable
+  writes`), which would break atomic order creation.
+
+Wait for it to be ready — `docker compose ps` should show `ecommerce-mongo` as `healthy`. The
+healthcheck only passes once a primary has been elected, so "healthy" really means usable:
+
+```bash
+docker compose ps
+```
 
 ## 2. Run the new Next.js app (`web/`)
 
@@ -53,6 +65,25 @@ Generate a secret for `.env.local` — the placeholder is rejected on purpose:
 node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
 ```
 
+Then load the demo catalog:
+
+```bash
+npm run seed
+```
+
+That upserts 5 categories, 12 products (one deliberately out of stock, so stock
+handling has something real to work against) and two accounts. It is **idempotent** — run it as
+often as you like without duplicating data. Add `-- --reset` to also clear carts and orders.
+
+| Demo account | Password | Role |
+|---|---|---|
+| `admin@example.com` | `Password123!` | admin |
+| `customer@example.com` | `Password123!` | customer |
+
+These are local development credentials, not secrets. Override with `SEED_PASSWORD=...`. The
+script refuses to run with `NODE_ENV=production` unless `ALLOW_PRODUCTION_SEED=1`, since it
+creates accounts with a published password.
+
 Verify it is wired up: <http://localhost:3000/api/health> should return
 `{"status":"ok","db":"connected"}`. If it returns `503` with
 `"reason":"database_unreachable"`, step 1 is not running; `"configuration_error"` means
@@ -68,6 +99,7 @@ response).
 | `npm start` | Serve the production build |
 | `npm test` | Vitest, once |
 | `npm run test:watch` | Vitest, watch mode |
+| `npm run seed` | Load the demo catalog and users (idempotent) |
 | `npm run typecheck` | `tsc --noEmit` |
 | `npm run lint` | ESLint |
 

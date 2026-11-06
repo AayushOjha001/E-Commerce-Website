@@ -65,3 +65,95 @@ to execute; without it they skip (by design). Use `REQUIRE_DB=1 npm test` to for
   failed (CLI unauthenticated, BL-1); the user then ran `gh auth login`, and **PR #1 "Batch 1:
   Foundation"** is now open against `master`:
   https://github.com/AayushOjha001/E-Commerce-Website/pull/1 — BL-1 resolved. Result: ✅
+
+### Batch 2 — Data layer ✅
+
+- **T2.0** *(unplanned, found by probing)* — The dev MongoDB was a standalone mongod, which **rejects
+  transactions** (`This MongoDB deployment does not support retryable writes`). That would have
+  broken atomic order creation in Batch 5. Converted to a single-node replica set on port 27018;
+  verified a transactional write commits and an aborted one rolls back. Result: ✅ · commit `ff22238`
+- **T2.1/T2.2** — Typed models + indexes, fixing audit **B8** (`countInStock` was `String`, so `"10" <
+  "9"`), **B9** (password re-hash locked users out), **B10** (`timestamp` typo meant no cart
+  timestamps) and **B11** (required `image` the code never set). `isAdmin` became `role`. Result: ✅ ·
+  commit `5a475fa`
+- **T2.3** — Idempotent seed: 5 categories, 12 products (one deliberately out of stock), 2 accounts,
+  12 committed local SVGs replacing the dead `via.placeholder.com` images. Result: ✅ · commit `3d7a914`
+- **T2.4** — Service layer, in two commits: products/categories/users/pricing (`055b8d4`), then
+  cart/orders with atomic checkout (`013ef52`). This is where the audit's worst defects are actually
+  fixed: **B2** (order creation always 500'd), **B3** (client-controlled prices; tax/shipping silently
+  0), **B4** (order IDOR), **B13** (stock never decremented), **R9** (cart qty overwritten rather than
+  incremented), **R5** (no pagination/search/filter/sort).
+- **Review fixes** — commit `60258fc`, see below.
+
+**Reviewer pass:** `CHANGES_REQUIRED`, 17 findings, all addressed. The reviewer confirmed the stock
+decrement is genuinely race-free and the IDOR fix airtight, then found four things worth the round
+trip:
+
+1. **`NaN` bypassed the paging clamp entirely.** It survives `Math.trunc`/`min`/`max`, and Mongo reads
+   `.limit(NaN)` as *no limit* — so the clamp inverted into "return the whole collection", the exact
+   opposite of its own docstring. `?limit=abc` via `Number()` produces it.
+2. **Price bounds reached Mongo unvalidated**, raising a raw `CastError` that would surface as a 500
+   with driver internals in it.
+3. **The seed's production guard was dead code.** It keyed on `NODE_ENV === "production"`, but `tsx`
+   sets no `NODE_ENV`, so for the documented `npm run seed` it never fired once. Rewritten to inspect
+   the target host; verified it now refuses a real `mongodb+srv://` URI.
+4. **`createUser` accepted a `role`** and is what registration will call in Batch 3 — a handler
+   spreading a request body into it would have granted self-elevation. Split out `registerCustomer`.
+
+It also caught a **vacuous test** of mine: "combines search with a category filter" passed with the
+filter removed, because the search term alone already produced the expected count.
+
+**Mutation tests** (logic removed → suite fails; restored → passes) on the two security-critical
+paths: removing the ownership check fails the IDOR test, and removing the atomic stock guard makes
+two concurrent checkouts *both* succeed and oversell.
+
+**Verified at the end of Batch 2:** 222 tests pass with `REQUIRE_DB=1`; lint, typecheck and build
+clean; `npm run seed` idempotent across runs and refusing a non-local target; legacy app still runs.
+
+**Plan refinement (D14):** T2.4 and Batch 5's T5.1/T5.3/T5.4/T5.6 overlapped — both described writing
+the cart/order services. The logic landed once here in the data layer; Batch 5 now wires it to route
+handlers and pages. The Batch 5 task text is updated to say so.
+
+### Batch 3 — Auth ✅
+
+- **T3.1–T3.4** — Session tokens, httpOnly cookie sessions, the four auth endpoints with zod
+  validation, the shared JSON error helper (closing audit **B6**) and `proxy.ts` route protection
+  (closing **B5**). Result: ✅ · commit `17d2b63`
+- **Test-DB fix** — Found while verifying by hand that the seeded admin could not log in: the test
+  suite had been running against **the development database** and wiping it on every run, since
+  `.env.local` sets `MONGODB_URI` and the `??=` default never applied. Dates back to Batch 1.
+  Result: ✅ · commit `a72fb2f`
+- **T3.5/T3.6** — Login/register/logout UI as server actions, auth state in the header (closing
+  **C1**), replacing legacy **P4/P5**. Result: ✅ · commit `411d765`
+- **Review fixes** — commit `a6aa613`, below.
+
+**Reviewer pass:** `CHANGES_REQUIRED` — one reachable defect and several demonstrated coverage
+holes. All addressed.
+
+1. **A valid token whose account no longer exists 500'd every protected page.** The proxy admits it
+   (the token verifies statelessly), `requireUser()` then throws, and nothing maps a ServiceError to
+   a redirect in a Server Component — so the error boundary renders a 500 instead of a login form.
+   Reachable just by reseeding. Split the guards: pages redirect, handlers throw (D17).
+2. **My `alg: none` test proved nothing, and its comment was wrong.** jsonwebtoken 9 rejects that
+   token with or without the `algorithms` pin — I confirmed it directly. What the pin actually buys
+   is rejecting HS384/HS512 signed with the same secret, which had no test at all.
+3. **`config.matcher` was asserted nowhere** — narrowing it to `["/account"]` left all 16 proxy
+   tests green, because they call `proxy()` directly and bypass routing.
+4. **Cookie `secure`/`maxAge` were asserted nowhere** — hardcoding `secure: false` left every
+   auth-route test passing.
+5. **A password change did not end other sessions.** Added `tokenVersion` (D16).
+6. **`requireAdmin` had no tests**, though it is a T3.6 exit criterion.
+7. **No component tests**, though the vitest config had promised a jsdom project "when components
+   arrive in Batch 3". Added, with AuthForm coverage.
+
+Also closed: 401 vs 403 were conflated; login timing distinguished an unknown email from a wrong
+password (now burns a dummy bcrypt compare); `?next=/login` looped.
+
+**Mutation-tested** findings 1–4 — each fix fails its test when reverted, and the new algorithm test
+fails when the pin is removed while every other token test stays green.
+
+**Verified at the end of Batch 3:** 353 tests (21 files, including a jsdom project); lint, typecheck,
+build and seed clean. Live against a production build: signed-out `/account` → 307 to
+`/login?next=%2Faccount`; a deleted account's live cookie → 307 (was 500) while the API gives 401
+JSON; `/admin` → 404 for a customer, reachable for an admin; a stolen cookie dies on password change
+while the session that made the change survives.

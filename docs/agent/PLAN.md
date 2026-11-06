@@ -15,7 +15,7 @@ API becomes Route Handlers (`app/api/**/route.ts`) and business logic lives in `
 |---|---|---|
 | D1 | **Option A — full-stack Next.js.** Express is ported to route handlers and deleted in Batch 7. | User chose Option A explicitly. |
 | D2 | **Keep MongoDB + Mongoose 8**, typed with TS. *Not* Prisma/SQL. | Audit §6.1: four usable schemas already exist; the reference's "use Prisma" default only applies when there is no ORM. Rewriting to SQL would discard a sound data model. |
-| D3 | **Local dev DB via `docker-compose` on host port `27018`.** | No local `mongod`; 27017 is occupied by an unrelated `qdrant_check-mongodb-1` container which must not be touched. |
+| D3 | **Local dev DB via `docker-compose` on port `27018`, as a single-node replica set.** | No local `mongod`; 27017 is occupied by an unrelated `qdrant_check-mongodb-1` container which must not be touched. Replica set (not standalone) because **transactions require one** — proven in Batch 2, see D13. |
 | D4 | **Tailwind v4** in the new app (`@tailwindcss/postcss`). | Old app already used Tailwind v4 utility CSS, so the reference's "Tailwind if the old app used utility CSS" applies. |
 | D5 | **Vitest** as the test runner, everywhere. | No runner exists today (audit §2). Reference names Vitest. |
 | D6 | **Auth: port the existing JWT logic** into route handlers, but move the token to an **httpOnly cookie**. Not NextAuth. | Keeps the bcrypt/`isAdmin` model the audit found working, and fixes B17 (JWT in `localStorage`). Fewer moving parts than Auth.js for a credentials-only app. |
@@ -23,6 +23,12 @@ API becomes Route Handlers (`app/api/**/route.ts`) and business logic lives in `
 | D8 | **Payments: mock provider** behind a swappable `PaymentProvider` interface. | User said test/mock mode; no payment dep exists. See BLOCKERS BL-2. |
 | D9 | **Old app stays runnable** until Batch 7 (`backend/` + `frontend/` untouched except a `.env.example` and the lint fix). | Skill hard rule + user instruction. |
 | D10 | Every fix for audit defects **B1–B17** is attached to the batch that ports the matching feature, so nothing is fixed twice. | Porting means fixing, not copying (audit §6.3). |
+| D12 | **Mongoose 9.10.2 in `web/`**, not 8.19.1 as D2 first said. | Deviation from "keep Mongoose 8", logged per the skill's major-version rule. `npm install mongoose` resolved to the current major, and Batch 1 shipped and tested on it (29 tests, real DB). A greenfield app should take the current stable major rather than match the app being deleted. Verified behaviour differences: mongoose 9 **no longer throws** when a model name is re-registered (8 raised `OverwriteModelError`), so the `mongoose.models.X ??=` guard is kept for identity/hot-reload rather than to avoid a crash. |
+| D14 | **The cart and order service logic landed in T2.4, not Batch 5.** Batch 5 now wires the existing services to route handlers and pages. | T2.4 ("service layer: products, cart, orders, users") and T5.1/T5.3/T5.4/T5.6 overlapped in the original plan. Writing the logic once in the data layer and exposing it later avoids duplicating it; the batch tasks above are reworded to say so. |
+| D15 | **Dev MongoDB is a single-node replica set** (T2.0). | Transactions require one; a standalone mongod rejects them, which would have broken atomic order creation. Found by probing in Batch 2 rather than failing in Batch 5. |
+| D13 | **Money stored as `Number`, rounded to 2dp at write time; arithmetic done in integer cents in services.** | Keeps the existing schema shape (D2) while avoiding float drift in totals. Revisit only if a currency with different minor units is added. |
+| D16 | **Sessions carry a `tokenVersion`, bumped on password change.** | Stateless JWTs would otherwise leave a token stolen before a password change valid for its full remaining lifetime. A counter rather than a `passwordChangedAt` timestamp: a JWT's `iat` is whole seconds and cannot separate a token minted just before a change from one just after in the same second. |
+| D17 | **Two guard flavours: `requireUser()` throws (handlers/actions), `requireUserForPage()` redirects (Server Components).** | A `ServiceError` thrown while rendering hits the error boundary and renders a **500**, not a login form. Found in review; it was reachable just by reseeding, which gives users new ids while an existing cookie stays cryptographically valid. |
 | D11 | **Next.js 16.3.6.** Route protection uses **`proxy.ts`**, not `middleware.ts`. | Discovered in Batch 1 from the version-matched docs bundled at `web/node_modules/next/dist/docs/`: v16 renamed the `middleware` file and its named export to `proxy`, and the `edge` runtime is not supported there (`proxy` is always `nodejs`). Also in v16: Turbopack is the default, and `cookies()`/`headers()`/`params`/`searchParams` are **async-only** — synchronous access was removed. This affects T3.1–T3.4. |
 
 ---
@@ -45,19 +51,20 @@ all pass; `/api/health` reports a live DB; `backend/` + `frontend/` still run.
 
 ---
 
-## Batch 2 — Data layer
-- [ ] **T2.1** — Port schemas to TS models in `src/server/models/`: `User`, `Product`, `Category` (new — old app had only a `category` string), `Cart`/`CartItem`, `Order`/`OrderItem`, `Address`. Fix **B8** (`countInStock` → `Number`), **B10** (`timestamps` typo), **B9** (missing `return` in the password hook), **B11** (`orderItems.image`).
-- [ ] **T2.2** — Model-level indexes + uniqueness (`user.email`, `cart.user`, product text index for search).
-- [ ] **T2.3** — Seed script (`npm run seed`) with ~12 demo products, local placeholder images, one admin + one customer user. Idempotent.
-- [ ] **T2.4** — Service layer `src/server/services/` (products, cart, orders, users) — pure functions over models, no `req`/`res`. Unit tests with an in-memory/throwaway DB.
+## Batch 2 — Data layer ✅ complete
+- [x] **T2.0** *(added during Batch 2)* — Convert the dev MongoDB to a single-node replica set so transactions work. *Done when:* a transactional write commits and an aborted one rolls back.
+- [x] **T2.1** — Port schemas to TS models in `src/server/models/`: `User`, `Product`, `Category` (new — old app had only a `category` string), `Cart`/`CartItem`, `Order`/`OrderItem`, `Address`. Fix **B8** (`countInStock` → `Number`), **B10** (`timestamps` typo), **B9** (missing `return` in the password hook), **B11** (`orderItems.image`).
+- [x] **T2.2** — Model-level indexes + uniqueness (`user.email`, `cart.user`, product text index for search).
+- [x] **T2.3** — Seed script (`npm run seed`) with ~12 demo products, local placeholder images, one admin + one customer user. Idempotent.
+- [x] **T2.4** — Service layer `src/server/services/` (products, cart, orders, users) — pure functions over models, no `req`/`res`. Unit tests with an in-memory/throwaway DB.
 
-## Batch 3 — Auth
-- [ ] **T3.1** — `src/server/auth/` — bcrypt hashing, JWT sign/verify, session read from httpOnly cookie.
-- [ ] **T3.2** — `POST /api/auth/register`, `POST /api/auth/login`, `POST /api/auth/logout`, `GET /api/users/profile` (ports **R2–R4**) with **zod** input validation. Fixes the `"credintials"` typo.
-- [ ] **T3.3** — Shared API error helper so every handler returns **JSON** `{message}`, never an HTML stack trace (fixes **B6**).
-- [ ] **T3.4** — `proxy.ts` (**not** `middleware.ts` — renamed in Next 16, see D11) protecting `/account`, `/checkout`, `/admin`; `requireUser()` / `requireAdmin()` guards for handlers (fixes **B5** — admin middleware did not exist at all).
-- [ ] **T3.5** — Login/register/logout UI (ports **P4/P5**) as server actions; auth state in the header (fixes **C1**).
-- [ ] **T3.6** — Tests: register/login/logout, wrong password, protected-route redirect, non-admin blocked from admin.
+## Batch 3 — Auth ✅ complete
+- [x] **T3.1** — `src/server/auth/` — bcrypt hashing, JWT sign/verify, session read from httpOnly cookie.
+- [x] **T3.2** — `POST /api/auth/register`, `POST /api/auth/login`, `POST /api/auth/logout`, `GET /api/users/profile` (ports **R2–R4**) with **zod** input validation. Fixes the `"credintials"` typo.
+- [x] **T3.3** — Shared API error helper so every handler returns **JSON** `{message}`, never an HTML stack trace (fixes **B6**).
+- [x] **T3.4** — `proxy.ts` (**not** `middleware.ts` — renamed in Next 16, see D11) protecting `/account`, `/checkout`, `/admin`; `requireUser()` / `requireAdmin()` guards for handlers (fixes **B5** — admin middleware did not exist at all).
+- [x] **T3.5** — Login/register/logout UI (ports **P4/P5**) as server actions; auth state in the header (fixes **C1**).
+- [x] **T3.6** — Tests: register/login/logout, wrong password, protected-route redirect, non-admin blocked from admin.
 
 ## Batch 4 — Catalog
 - [ ] **T4.1** — `GET /api/products` with **pagination, search, category filter, sort** (fixes **B5**/R5 gap).
@@ -68,12 +75,12 @@ all pass; `/api/health` reports a live DB; `backend/` + `frontend/` still run.
 - [ ] **T4.6** — Tests: list/filter/pagination service, detail 404 path.
 
 ## Batch 5 — Cart, checkout, orders
-- [ ] **T5.1** — Cart service + `GET/POST /api/cart`, `DELETE /api/cart/[productId]` (ports **R8–R10**) with qty and stock validation; qty **increments** correctly.
+- [ ] **T5.1** — Expose the cart service (built in T2.4) via `GET/POST /api/cart` and `DELETE /api/cart/[productId]` (ports **R8–R10**). Validation, stock checks and correct qty incrementing are already done and tested.
 - [ ] **T5.2** — Cart page with server data + optimistic updates (replaces **P3**, the `"No items yet."` stub).
-- [ ] **T5.3** — Checkout: **server-computed** `itemsPrice`/`tax`/`shipping`/`total` from DB prices — never client-supplied (fixes **B3**).
-- [ ] **T5.4** — `POST /api/orders`: transactional order creation + **stock decrement** (fixes **B2**, **B13**).
+- [ ] **T5.3** — Checkout page/flow on top of the pricing service (built in T2.4, which already computes all totals server-side — **B3** fixed there).
+- [ ] **T5.4** — `POST /api/orders` route handler over `createOrderFromCart` (built in T2.4: transactional, atomic stock decrement — **B2**/**B13** fixed and race-tested there).
 - [ ] **T5.5** — Mock payment provider behind a `PaymentProvider` interface; mark order paid (BL-2).
-- [ ] **T5.6** — `GET /api/orders` (my orders) and `GET /api/orders/[id]` **with an ownership check** (fixes **B4** IDOR).
+- [ ] **T5.6** — `GET /api/orders` and `GET /api/orders/[id]` route handlers over the order service (ownership check + **B4** IDOR fix already implemented and mutation-tested in T2.4).
 - [ ] **T5.7** — Pages: checkout, order confirmation, order history, order detail.
 - [ ] **T5.8** — Tests: stock rejection, total correctness, IDOR is denied, empty-cart checkout rejected.
 
