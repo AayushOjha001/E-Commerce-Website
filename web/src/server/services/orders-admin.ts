@@ -9,9 +9,9 @@ import {
   type OrderStatus,
   type User,
 } from "@/server/models";
-import { conflict, notFound } from "./errors";
+import { conflict, isServiceError, notFound } from "./errors";
 import type { Paginated } from "./products";
-import { orderNumber } from "./orders";
+import { getOrderForUser, isPaymentInProgress, orderNumber } from "./orders";
 
 /**
  * Where an order may go from each status.
@@ -27,6 +27,9 @@ export const ORDER_TRANSITIONS: Record<OrderStatus, readonly OrderStatus[]> = {
   delivered: [],
   cancelled: [],
 };
+
+/** How long an unpaid order may hold stock before it is released. */
+export const UNPAID_ORDER_TTL_MINUTES = 30;
 
 export const LOW_STOCK_LEVEL = 5;
 const ORDERS_PER_PAGE = 20;
@@ -140,6 +143,10 @@ export async function updateOrderStatus(
         throw conflict(`An order that is ${order.status} cannot become ${next}`);
       }
 
+      if (isPaymentInProgress(order)) {
+        throw conflict("A payment for this order is in progress. Try again shortly.");
+      }
+
       updated = await OrderModel.findOneAndUpdate(
         { _id: order._id, status: order.status },
         { $set: statusUpdate(order, next) },
@@ -166,6 +173,63 @@ export async function updateOrderStatus(
   } finally {
     await session.endSession();
   }
+}
+
+/**
+ * Lets a customer cancel their own unpaid order, returning its stock.
+ *
+ * Paid orders go through an admin, since cancelling those means a refund.
+ */
+export async function cancelOwnOrder(
+  orderId: string,
+  userId: string,
+): Promise<Order> {
+  const order = await getOrderForUser(orderId, userId);
+
+  if (order.status !== "pending") {
+    throw conflict("Only an unpaid order can be cancelled");
+  }
+
+  return updateOrderStatus(orderId, "cancelled");
+}
+
+/**
+ * Cancels unpaid orders past their time limit, returning their stock.
+ *
+ * Stock is taken when an order is created, so without this an abandoned or
+ * declined order would hold it forever, and repeatedly ordering without paying
+ * would empty the shop for free. There is no scheduler here, so it runs where
+ * stock is about to matter: before each checkout and on the admin overview.
+ *
+ * Returns how many orders were released. An order that changes underneath this,
+ * such as one being paid right now, is skipped and left for the next sweep.
+ */
+export async function releaseExpiredOrders(now = new Date()): Promise<number> {
+  await connectDB();
+
+  const cutoff = new Date(now.getTime() - UNPAID_ORDER_TTL_MINUTES * 60 * 1000);
+
+  const expired = await OrderModel.find({
+    status: "pending",
+    isPaid: false,
+    createdAt: { $lt: cutoff },
+  })
+    .select("_id")
+    .limit(100)
+    .lean();
+
+  let released = 0;
+
+  for (const order of expired) {
+    try {
+      await updateOrderStatus(String(order._id), "cancelled");
+      released += 1;
+    } catch (error) {
+      if (!isServiceError(error)) throw error;
+    }
+  }
+
+  return released;
 }
 
 export function isOrderStatus(value: unknown): value is OrderStatus {

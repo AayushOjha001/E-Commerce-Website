@@ -2,19 +2,19 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { z } from "zod";
 
 import { safeRedirectPath } from "@/lib/redirect";
 import { getCurrentUser } from "@/server/auth/session";
-import { PAYMENT_METHODS } from "@/server/payments/provider";
 import { addToCart, removeFromCart, setCartItemQty } from "@/server/services/cart";
 import { isServiceError } from "@/server/services/errors";
 import { createOrderFromCart, payOrder } from "@/server/services/orders";
+import { cancelOwnOrder, releaseExpiredOrders } from "@/server/services/orders-admin";
 import {
   addToCartSchema,
+  checkoutSchema,
+  objectIdSchema,
   paySchema,
   setCartQtySchema,
-  shippingAddressSchema,
 } from "@/server/services/shop-schemas";
 
 /**
@@ -77,11 +77,12 @@ export async function setCartQtyAction(
   const user = await getCurrentUser();
   if (!user) redirect("/login?next=%2Fcart");
 
+  const id = objectIdSchema.safeParse(productId);
   const parsed = setCartQtySchema.safeParse({ qty });
-  if (!parsed.success) return { error: "Choose a valid quantity" };
+  if (!id.success || !parsed.success) return { error: "Choose a valid quantity" };
 
   try {
-    await setCartItemQty(user.id, productId, parsed.data.qty);
+    await setCartItemQty(user.id, id.data, parsed.data.qty);
   } catch (error) {
     // Refresh even on failure: the optimistic quantity has to snap back.
     refreshCart();
@@ -98,8 +99,11 @@ export async function removeCartItemAction(
   const user = await getCurrentUser();
   if (!user) redirect("/login?next=%2Fcart");
 
+  const id = objectIdSchema.safeParse(productId);
+  if (!id.success) return { error: "That item could not be found" };
+
   try {
-    await removeFromCart(user.id, productId);
+    await removeFromCart(user.id, id.data);
   } catch (error) {
     refreshCart();
     return { error: userError(error) };
@@ -134,12 +138,11 @@ export async function placeOrderAction(
   // without this a failed submit would quietly change the chosen payment method.
   const values = { ...address, paymentMethod };
 
-  const parsed = z
-    .object({
-      shippingAddress: shippingAddressSchema,
-      paymentMethod: z.enum(PAYMENT_METHODS, { error: "Choose a payment method" }),
-    })
-    .safeParse({ shippingAddress: address, paymentMethod });
+  const parsed = checkoutSchema.safeParse({
+    shippingAddress: address,
+    paymentMethod,
+    expectedTotal: Number(formData.get("expectedTotal")),
+  });
 
   if (!parsed.success) {
     const fieldErrors: Record<string, string> = {};
@@ -150,25 +153,33 @@ export async function placeOrderAction(
     return { error: "Check the highlighted fields", fieldErrors, values };
   }
 
+  await releaseExpiredOrders();
+
   let orderId: string;
   try {
     const order = await createOrderFromCart(user.id, parsed.data);
     orderId = String(order._id);
   } catch (error) {
+    // Refreshed so the summary and button show the figures that caused this.
+    refreshCart();
     return { error: userError(error), values };
   }
 
-  // The order exists from here on. A declined payment must not read as a failed
-  // checkout, or the shopper would try again from an empty cart, so it goes to
-  // the order page, which offers a retry.
+  // The order exists from here on and the cart is empty, so every outcome has to
+  // end on the order page. Anything else strands the shopper at an empty cart
+  // with no sign of the order they just placed.
   let outcome = "placed";
   try {
     await payOrder(orderId, user.id, {
       paymentMethod: parsed.data.paymentMethod,
     });
   } catch (error) {
-    if (!isServiceError(error) || error.code !== "payment_declined") throw error;
-    outcome = "declined";
+    if (isServiceError(error) && error.code === "payment_declined") {
+      outcome = "declined";
+    } else {
+      console.error("[checkout] payment failed:", error);
+      outcome = "failed";
+    }
   }
 
   refreshCart();
@@ -181,9 +192,10 @@ export async function retryPaymentAction(
   formData: FormData,
 ): Promise<ActionResult> {
   const user = await getCurrentUser();
-  if (!user) {
-    redirect(`/login?next=${encodeURIComponent(`/account/orders/${orderId}`)}`);
-  }
+  if (!user) redirect("/login?next=%2Faccount%2Forders");
+
+  const id = objectIdSchema.safeParse(orderId);
+  if (!id.success) return { error: "That order could not be found" };
 
   const parsed = paySchema.safeParse({
     paymentMethod: formData.get("paymentMethod"),
@@ -191,11 +203,29 @@ export async function retryPaymentAction(
   if (!parsed.success) return { error: "Choose a payment method" };
 
   try {
-    await payOrder(orderId, user.id, parsed.data);
+    await payOrder(id.data, user.id, parsed.data);
   } catch (error) {
-    revalidatePath(`/account/orders/${orderId}`);
+    revalidatePath(`/account/orders/${id.data}`);
     return { error: userError(error) };
   }
 
-  redirect(`/account/orders/${orderId}?result=placed`);
+  revalidatePath(`/account/orders/${id.data}`);
+  redirect(`/account/orders/${id.data}?result=placed`);
+}
+
+export async function cancelOrderAction(orderId: string): Promise<ActionResult> {
+  const user = await getCurrentUser();
+  if (!user) redirect("/login?next=%2Faccount%2Forders");
+
+  const id = objectIdSchema.safeParse(orderId);
+  if (!id.success) return { error: "That order could not be found" };
+
+  try {
+    await cancelOwnOrder(id.data, user.id);
+  } catch (error) {
+    return { error: userError(error) };
+  }
+
+  refreshCart();
+  redirect(`/account/orders/${id.data}?result=cancelled`);
 }

@@ -1,10 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { useOptimistic, useState, useTransition } from "react";
+import { useOptimistic, useRef, useState, useTransition } from "react";
 
 import { ProductArt } from "@/components/product-art";
 import { LINK_CLASS, Notice, buttonClass } from "@/components/ui";
+import { MAX_QTY_PER_ITEM } from "@/lib/cart-limits";
 import { applyCartChange, type CartChange } from "@/lib/cart-view";
 import { departmentClass } from "@/lib/department";
 import { formatPrice } from "@/lib/format";
@@ -15,7 +16,8 @@ import {
 } from "@/server/services/pricing";
 import { removeCartItemAction, setCartQtyAction } from "@/server/shop/actions";
 
-const MAX_QTY = 99;
+const STEP_CLASS =
+  "size-9 rounded-md text-lg font-bold hover:bg-ink/10 aria-disabled:cursor-not-allowed aria-disabled:opacity-40";
 
 function stockWarning(line: CartLine): string | null {
   if (!line.exceedsStock) return null;
@@ -31,7 +33,11 @@ function CartRow({
   onChange: (change: CartChange) => void;
 }) {
   const warning = stockWarning(line);
-  const canIncrease = line.qty < Math.min(line.countInStock, MAX_QTY);
+  const canIncrease = line.qty < Math.min(line.countInStock, MAX_QTY_PER_ITEM);
+  const canDecrease = line.qty > 1;
+
+  // One press brings a line back within stock, however far over it is.
+  const lowered = Math.max(Math.min(line.qty - 1, line.countInStock), 1);
 
   return (
     <li className="grid grid-cols-[88px_1fr] gap-4 py-4 sm:grid-cols-[112px_1fr_auto]">
@@ -59,28 +65,34 @@ function CartRow({
             aria-label={`Quantity of ${line.name}`}
             className="inline-flex items-center rounded-md bg-ink/10"
           >
+            {/* aria-disabled, not disabled: a disabled button drops keyboard
+                focus the moment a press reaches the limit. */}
             <button
               type="button"
               aria-label={`Remove one ${line.name}`}
-              disabled={line.qty <= 1}
-              onClick={() =>
-                onChange({ type: "qty", productId: line.productId, qty: line.qty - 1 })
-              }
-              className="size-9 rounded-md text-lg font-bold hover:bg-ink/10 disabled:opacity-40"
+              aria-disabled={!canDecrease}
+              onClick={() => {
+                if (canDecrease) {
+                  onChange({ type: "qty", productId: line.productId, qty: lowered });
+                }
+              }}
+              className={STEP_CLASS}
             >
               −
             </button>
-            <span aria-live="polite" className="price min-w-8 text-center font-semibold">
+            <span className="price min-w-8 text-center font-semibold">
               {line.qty}
             </span>
             <button
               type="button"
               aria-label={`Add one ${line.name}`}
-              disabled={!canIncrease}
-              onClick={() =>
-                onChange({ type: "qty", productId: line.productId, qty: line.qty + 1 })
-              }
-              className="size-9 rounded-md text-lg font-bold hover:bg-ink/10 disabled:opacity-40"
+              aria-disabled={!canIncrease}
+              onClick={() => {
+                if (canIncrease) {
+                  onChange({ type: "qty", productId: line.productId, qty: line.qty + 1 });
+                }
+              }}
+              className={STEP_CLASS}
             >
               +
             </button>
@@ -128,20 +140,40 @@ function FreeShippingMeter({ subtotal }: { subtotal: number }) {
 export function CartContents({ cart }: { cart: CartView }) {
   const [optimisticCart, applyChange] = useOptimistic(cart, applyCartChange);
   const [error, setError] = useState<string>();
-  const [, startTransition] = useTransition();
+  const [announcement, setAnnouncement] = useState("");
+  const [isPending, startTransition] = useTransition();
+  const listRef = useRef<HTMLDivElement>(null);
 
   const handleChange = (change: CartChange) => {
     setError(undefined);
 
+    const name =
+      cart.items.find((item) => item.productId === change.productId)?.name ?? "Item";
+
     startTransition(async () => {
       applyChange(change);
+
+      if (change.type === "remove") {
+        // The focused button is about to disappear, which would otherwise send
+        // keyboard users back to the top of the page.
+        listRef.current?.focus();
+      }
 
       const result =
         change.type === "remove"
           ? await removeCartItemAction(change.productId)
           : await setCartQtyAction(change.productId, change.qty);
 
-      if (result.error) setError(result.error);
+      if (result.error) {
+        setError(result.error);
+        setAnnouncement("");
+      } else {
+        setAnnouncement(
+          change.type === "remove"
+            ? `${name} removed from your cart`
+            : `${name} quantity set to ${change.qty}`,
+        );
+      }
     });
   };
 
@@ -160,7 +192,10 @@ export function CartContents({ cart }: { cart: CartView }) {
 
   return (
     <div className="mt-6 grid items-start gap-8 lg:grid-cols-[1fr_380px]">
-      <div>
+      <div ref={listRef} tabIndex={-1} className="outline-none">
+        <p role="status" className="sr-only">
+          {announcement}
+        </p>
         {error ? <Notice>{error}</Notice> : null}
         <ul className="divide-y-2 divide-ink/10">
           {optimisticCart.items.map((line) => (
@@ -203,6 +238,15 @@ export function CartContents({ cart }: { cart: CartView }) {
           <p className="font-semibold text-danger">
             Fix the items marked above to check out.
           </p>
+        ) : isPending ? (
+          // Not a link while saving: the checkout total must include this change.
+          <button
+            type="button"
+            disabled
+            className={buttonClass({ size: "lg", className: "w-full" })}
+          >
+            Saving…
+          </button>
         ) : (
           <Link href="/checkout" className={buttonClass({ size: "lg", className: "w-full" })}>
             Go to checkout

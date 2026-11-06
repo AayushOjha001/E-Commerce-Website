@@ -5,6 +5,7 @@ import {
   listOrdersForUser,
   toPublicOrder,
 } from "@/server/services/orders";
+import { releaseExpiredOrders } from "@/server/services/orders-admin";
 import { checkoutSchema } from "@/server/services/shop-schemas";
 
 // Ports GET /api/orders/myorders (audit R12). The id-less path returns the
@@ -19,11 +20,13 @@ export const GET = withErrorHandling(async () => {
 });
 
 // Ports POST /api/orders (audit R11), which always threw a ReferenceError.
-// Nothing about the money comes from the body: the schema accepts only an
-// address and a payment method, and totals are rebuilt from the database.
+// Nothing about the money comes from the body. Totals are rebuilt from the
+// database, and `expectedTotal` can only make an order fail, never change it.
 export const POST = withErrorHandling(async (request: Request) => {
   const user = await requireUser();
   const input = checkoutSchema.parse(await readJsonBody(request));
+
+  await releaseExpiredOrders();
   const order = await createOrderFromCart(user.id, input);
 
   return jsonOk({ order: toPublicOrder(order) }, 201);

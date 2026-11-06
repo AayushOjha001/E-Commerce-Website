@@ -44,6 +44,8 @@ export type Order = {
   shippingAddress: Address;
   paymentMethod: string;
   paymentResult?: PaymentResult;
+  /** Counts charges attempted, to give each its own idempotency key. */
+  paymentAttempts: number;
   itemsPrice: number;
   taxPrice: number;
   shippingPrice: number;
@@ -129,6 +131,7 @@ const orderSchema = new Schema<Order>(
         { _id: false },
       ),
     },
+    paymentAttempts: { type: Number, required: true, default: 0, min: 0 },
     // All four are server-computed from database prices, never taken from the
     // request body — the legacy controller trusted client-supplied prices and
     // left tax/shipping silently at 0 (audit B3).

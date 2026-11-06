@@ -18,9 +18,9 @@ export type ChargeRequest = {
   amount: number;
   method: string;
   /**
-   * Stable per order. A real provider uses this to collapse a retried or
-   * concurrent request into one charge, which is why it is required here even
-   * though the mock has nothing to deduplicate.
+   * Stable per payment attempt, not per order. A real provider replays the stored
+   * result for a repeated key, so reusing one after a decline would replay the
+   * decline forever. Required here even though the mock deduplicates nothing.
    */
   idempotencyKey: string;
 };
@@ -44,7 +44,9 @@ export class MockPaymentProvider implements PaymentProvider {
   readonly name = "mock";
 
   async charge(request: ChargeRequest): Promise<ChargeResult> {
-    if (request.method === "test-decline") {
+    // Fails closed: anything but the approving method is declined, so an
+    // unexpected value can never settle an order.
+    if (request.method !== "test-approve") {
       return {
         ok: false,
         reason: "The test payment was declined",

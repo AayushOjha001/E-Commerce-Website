@@ -26,7 +26,7 @@ const RECENT_ORDERS = 3;
  */
 export default async function AccountPage() {
   const user = await requireUserForPage("/account");
-  const orders = await listOrdersForUser(user.id);
+  const orders = await listOrdersForUser(user.id, { limit: RECENT_ORDERS });
 
   return (
     <main className="mx-auto w-full max-w-[1400px] px-4 pt-6 pb-12 sm:px-6">
@@ -48,7 +48,7 @@ export default async function AccountPage() {
           ) : (
             <>
               <ul className="mt-2 divide-y-2 divide-ink/10">
-                {orders.slice(0, RECENT_ORDERS).map((order) => {
+                {orders.map((order) => {
                   const id = String(order._id);
 
                   return (

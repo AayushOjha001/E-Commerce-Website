@@ -50,6 +50,7 @@ export const updateProfileSchema = z
       .min(MIN_PASSWORD_LENGTH, `Password must be at least ${MIN_PASSWORD_LENGTH} characters`)
       .max(72, "Password must be 72 characters or fewer")
       .optional(),
+    currentPassword: z.string().max(200).optional(),
   })
   // `role` is deliberately absent: an unknown key is stripped by default, so a
   // client sending `role: "admin"` cannot elevate itself through this endpoint.

@@ -3,7 +3,10 @@ import Link from "next/link";
 import { LINK_CLASS, PageTitle } from "@/components/ui";
 import { formatPrice, pluralise } from "@/lib/format";
 import { requireAdminForPage } from "@/server/auth/session";
-import { getDashboardStats } from "@/server/services/orders-admin";
+import {
+  getDashboardStats,
+  releaseExpiredOrders,
+} from "@/server/services/orders-admin";
 
 function Stat({
   label,
@@ -32,6 +35,7 @@ function Stat({
 
 export default async function AdminPage() {
   await requireAdminForPage("/admin");
+  await releaseExpiredOrders();
   const stats = await getDashboardStats();
 
   return (

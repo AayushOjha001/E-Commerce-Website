@@ -21,6 +21,16 @@ describe("safeRedirectPath", () => {
     }
   });
 
+  it.each([
+    ["a tab", "/\t/evil.example"],
+    ["a newline", "/\n/evil.example"],
+    ["a carriage return", "/\r\n/evil.example"],
+    ["a tab before the slashes", "\t//evil.example"],
+  ])("rejects %s hidden in a protocol-relative URL", (_label, value) => {
+    // URL parsers strip these before parsing, so each one resolves off-site.
+    expect(safeRedirectPath(value)).toBe("/");
+  });
+
   it("rejects a protocol-relative URL", () => {
     // "//evil.example" inherits the current scheme and is still off-site.
     expect(safeRedirectPath("//evil.example")).toBe("/");

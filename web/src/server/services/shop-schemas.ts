@@ -33,7 +33,11 @@ const paymentMethod = z.enum(PAYMENT_METHODS, {
 export const checkoutSchema = z.object({
   shippingAddress: shippingAddressSchema,
   paymentMethod,
+  expectedTotal: z.number().finite().min(0).optional(),
 });
+
+/** Validates an id from a client, which a server action cannot trust either. */
+export const objectIdSchema = z.string().regex(/^[a-f\d]{24}$/i);
 
 export const paySchema = z.object({ paymentMethod });
 

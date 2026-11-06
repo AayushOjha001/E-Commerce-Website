@@ -43,6 +43,12 @@ describe("MockPaymentProvider", () => {
     ).resolves.toMatchObject({ ok: true, id: "mock_abc", provider: "mock" });
   });
 
+  it("declines anything it does not recognise", async () => {
+    await expect(
+      provider.charge({ ...request, method: "free" }),
+    ).resolves.toMatchObject({ ok: false });
+  });
+
   it("declines the declining test method", async () => {
     await expect(
       provider.charge({ ...request, method: "test-decline" }),
@@ -95,7 +101,7 @@ describe.skipIf(!dbReachable)("payOrder", () => {
     expect(paid).toMatchObject({ isPaid: true, status: "paid" });
     expect(paid.paidAt).toBeInstanceOf(Date);
     expect(paid.paymentResult).toMatchObject({
-      id: `mock_${orderId}`,
+      id: `mock_${orderId}:1`,
       provider: "mock",
     });
   });
@@ -115,7 +121,7 @@ describe.skipIf(!dbReachable)("payOrder", () => {
 
     // 50 + 13% tax + 9.99 shipping, since 50 is under the free threshold.
     expect(provider.charge).toHaveBeenCalledWith(
-      expect.objectContaining({ amount: 66.49, idempotencyKey: orderId }),
+      expect.objectContaining({ amount: 66.49, idempotencyKey: `${orderId}:1` }),
     );
   });
 
@@ -133,21 +139,98 @@ describe.skipIf(!dbReachable)("payOrder", () => {
     ).resolves.toMatchObject({ isPaid: true });
   });
 
-  it("refuses to pay twice", async () => {
-    await payOrder(orderId, userId, { paymentMethod: "test-approve" });
-
-    await expect(
-      payOrder(orderId, userId, { paymentMethod: "test-approve" }),
-    ).rejects.toMatchObject({ code: "conflict" });
+  const spyProvider = (): PaymentProvider => ({
+    name: "spy",
+    charge: vi.fn(async ({ idempotencyKey }) => ({
+      ok: true as const,
+      id: idempotencyKey,
+      status: "succeeded" as const,
+      provider: "spy",
+    })),
   });
 
-  it("lets only one of two simultaneous payments win", async () => {
+  it("refuses to pay twice, without touching the provider", async () => {
+    await payOrder(orderId, userId, { paymentMethod: "test-approve" });
+
+    const provider = spyProvider();
+    await expect(
+      payOrder(orderId, userId, { paymentMethod: "test-approve", provider }),
+    ).rejects.toMatchObject({ code: "conflict" });
+
+    expect(provider.charge).not.toHaveBeenCalled();
+  });
+
+  it("charges once when two payments race", async () => {
+    const provider = spyProvider();
+
     const results = await Promise.allSettled([
-      payOrder(orderId, userId, { paymentMethod: "test-approve" }),
-      payOrder(orderId, userId, { paymentMethod: "test-approve" }),
+      payOrder(orderId, userId, { paymentMethod: "test-approve", provider }),
+      payOrder(orderId, userId, { paymentMethod: "test-approve", provider }),
     ]);
 
     expect(results.filter((r) => r.status === "fulfilled")).toHaveLength(1);
+    expect(provider.charge).toHaveBeenCalledTimes(1);
+  });
+
+  it("uses a new idempotency key for each attempt", async () => {
+    await expect(
+      payOrder(orderId, userId, { paymentMethod: "test-decline" }),
+    ).rejects.toMatchObject({ code: "payment_declined" });
+
+    const provider = spyProvider();
+    await payOrder(orderId, userId, { paymentMethod: "test-approve", provider });
+
+    expect(provider.charge).toHaveBeenCalledWith(
+      expect.objectContaining({ idempotencyKey: `${orderId}:2` }),
+    );
+  });
+
+  it("releases the claim when the provider throws, so the order can be retried", async () => {
+    const provider: PaymentProvider = {
+      name: "broken",
+      charge: vi.fn(async () => {
+        throw new Error("network down");
+      }),
+    };
+
+    await expect(
+      payOrder(orderId, userId, { paymentMethod: "test-approve", provider }),
+    ).rejects.toThrow("network down");
+
+    await expect(
+      payOrder(orderId, userId, { paymentMethod: "test-approve" }),
+    ).resolves.toMatchObject({ isPaid: true });
+  });
+
+  it("takes over a claim left behind by a process that died", async () => {
+    await OrderModel.updateOne(
+      { _id: orderId },
+      {
+        "paymentResult.status": "processing",
+        "paymentResult.updateTime": new Date(Date.now() - 60 * 60 * 1000).toISOString(),
+      },
+    );
+
+    await expect(
+      payOrder(orderId, userId, { paymentMethod: "test-approve" }),
+    ).resolves.toMatchObject({ isPaid: true });
+  });
+
+  it("will not take over a live claim", async () => {
+    await OrderModel.updateOne(
+      { _id: orderId },
+      {
+        "paymentResult.status": "processing",
+        "paymentResult.updateTime": new Date().toISOString(),
+      },
+    );
+
+    const provider = spyProvider();
+    await expect(
+      payOrder(orderId, userId, { paymentMethod: "test-approve", provider }),
+    ).rejects.toMatchObject({ code: "conflict" });
+
+    expect(provider.charge).not.toHaveBeenCalled();
   });
 
   it("refuses someone else's order", async () => {
@@ -169,8 +252,15 @@ describe.skipIf(!dbReachable)("payOrder", () => {
 
   describe("getLastShippingAddress", () => {
     it("returns the address from the latest order", async () => {
+      const product = await ProductModel.findOne();
+      await addToCart(userId, String(product?._id), 1);
+      await createOrderFromCart(userId, {
+        shippingAddress: { ...ADDRESS, city: "Paris" },
+        paymentMethod: "test-approve",
+      });
+
       await expect(getLastShippingAddress(userId)).resolves.toMatchObject({
-        city: "London",
+        city: "Paris",
       });
     });
 
