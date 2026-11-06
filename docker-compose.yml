@@ -1,0 +1,23 @@
+# Local development database only.
+#
+# Host port is 27018, not the MongoDB default 27017, because 27017 is commonly
+# already bound on dev machines (it is on this one, by an unrelated container).
+# Keep the container port at 27017 and remap on the host.
+services:
+  mongo:
+    image: mongo:7
+    container_name: ecommerce-mongo
+    restart: unless-stopped
+    ports:
+      - "27018:27017"
+    volumes:
+      - mongo-data:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+volumes:
+  mongo-data:

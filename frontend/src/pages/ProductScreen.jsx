@@ -1,9 +1,8 @@
-import { useParams, Link } from "react-router-dom";
+import { Link } from "react-router-dom";
 
 export default function ProductScreen() {
-  const { id } = useParams();
-
-  // Static data for now
+  // Static data for now. The route param is intentionally unused until this
+  // page fetches a real product; the Next.js port does that in Batch 4 (T4.4).
   const product = {
     name: "iPhone 14",
     price: 999,
