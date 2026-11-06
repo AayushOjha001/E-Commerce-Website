@@ -66,19 +66,19 @@ App Router equivalent to build. **Every row must be ticked in Batch 7 before cut
 
 | # | Express route | Auth | Verified runtime result | Status | Next.js target | Done |
 |---|---|---|---|---|---|---|
-| R1 | `GET /` | – | `API is running.....` | ✅ | n/a (replaced by `/api/health`) | [ ] |
-| R2 | `POST /api/users/register` | – | `201` + user JSON + token | ⚠️ no validation; returns no `isAdmin`; token in JSON body | `app/api/auth/register/route.ts` | [ ] |
-| R3 | `POST /api/users/login` | – | `200` + user JSON + token | ⚠️ typo `"Invalid credintials"`; no rate limiting | `app/api/auth/login/route.ts` | [ ] |
-| R4 | `GET /api/users/profile` | JWT | `200` + `{_id,name,email,isAdmin}` | ✅ | `app/api/users/profile/route.ts` | [ ] |
-| R5 | `GET /api/products` | – | `200` + array | ⚠️ **no pagination / search / filter / sort** | `app/api/products/route.ts` | [ ] |
-| R6 | `POST /api/products` | **NONE** | `201` — created a product with **no token at all** | ⚠️ **CRITICAL: unauthenticated write** | `app/api/admin/products/route.ts` (admin only) | [ ] |
-| R7 | `GET /api/products/:id` | – | **`404 Cannot GET /api/products/<id>`** | ❌ **dead route** (see B1) | `app/api/products/[id]/route.ts` | [ ] |
-| R8 | `GET /api/cart` | JWT | `200` + populated cart | ✅ | `app/api/cart/route.ts` GET | [ ] |
-| R9 | `POST /api/cart` | JWT | `200` + populated cart | ⚠️ no qty/stock validation, qty **replaced** not incremented | `app/api/cart/route.ts` POST | [ ] |
-| R10 | `DELETE /api/cart/:productId` | JWT | reachable | ⚠️ no validation | `app/api/cart/[productId]/route.ts` | [ ] |
-| R11 | `POST /api/orders` | JWT | **`500 ReferenceError: product is not defined`** | ❌ **checkout impossible** (see B2) | `app/api/orders/route.ts` POST | [ ] |
-| R12 | `GET /api/orders/myorders` | JWT | `200` + `[]` | ✅ | `app/api/orders/route.ts` GET | [ ] |
-| R13 | `GET /api/orders/:id` | JWT | reachable | ⚠️ **IDOR — no ownership check** (see B4) | `app/api/orders/[id]/route.ts` | [ ] |
+| R1 | `GET /` | – | `API is running.....` | ✅ | `/api/health` | [x] |
+| R2 | `POST /api/users/register` | – | `201` + user JSON + token | ⚠️ no validation; returns no `isAdmin`; token in JSON body | `app/api/auth/register/route.ts` | [x] |
+| R3 | `POST /api/users/login` | – | `200` + user JSON + token | ⚠️ typo `"Invalid credintials"`; no rate limiting | `app/api/auth/login/route.ts` | [x] |
+| R4 | `GET /api/users/profile` | JWT | `200` + `{_id,name,email,isAdmin}` | ✅ | `app/api/users/profile/route.ts` | [x] |
+| R5 | `GET /api/products` | – | `200` + array | ⚠️ **no pagination / search / filter / sort** | `app/api/products/route.ts` | [x] |
+| R6 | `POST /api/products` | **NONE** | `201` — created a product with **no token at all** | ⚠️ **CRITICAL: unauthenticated write** | `app/api/admin/products/route.ts` (admin only) | [x] |
+| R7 | `GET /api/products/:id` | – | **`404 Cannot GET /api/products/<id>`** | ❌ **dead route** (see B1) | `app/api/products/[id]/route.ts` | [x] |
+| R8 | `GET /api/cart` | JWT | `200` + populated cart | ✅ | `app/api/cart/route.ts` GET | [x] |
+| R9 | `POST /api/cart` | JWT | `200` + populated cart | ⚠️ no qty/stock validation, qty **replaced** not incremented | `app/api/cart/route.ts` POST | [x] |
+| R10 | `DELETE /api/cart/:productId` | JWT | reachable | ⚠️ no validation | `app/api/cart/[productId]/route.ts` | [x] |
+| R11 | `POST /api/orders` | JWT | **`500 ReferenceError: product is not defined`** | ❌ **checkout impossible** (see B2) | `app/api/orders/route.ts` POST | [x] |
+| R12 | `GET /api/orders/myorders` | JWT | `200` + `[]` | ✅ | `app/api/orders/route.ts` GET | [x] |
+| R13 | `GET /api/orders/:id` | JWT | reachable | ⚠️ **IDOR — no ownership check** (see B4) | `app/api/orders/[id]/route.ts` | [x] |
 
 **Missing entirely (no route exists):** logout/session, refresh, update profile, password reset,
 categories, product update/delete, admin order list, order status (pay/deliver), stock decrement,
@@ -88,17 +88,17 @@ address book, reviews (the `rating`/`numReviews` fields are never written).
 
 | # | Page / file | Route | Real data? | Status | Next.js target | Done |
 |---|---|---|---|---|---|---|
-| P1 | `pages/HomeScreen.jsx` | `/` | ❌ **3 hardcoded products** (`iPhone 14`…), `via.placeholder.com` images | ❌ fake | `app/(shop)/page.tsx` (server component) | [ ] |
-| P2 | `pages/ProductScreen.jsx` | `/product/:id` | ❌ **hardcoded iPhone**, ignores `:id`, "Add to Cart" is a `<Link>` that adds nothing | ❌ fake | `app/(shop)/products/[id]/page.tsx` | [ ] |
-| P3 | `pages/CartScreen.jsx` | `/cart` | ❌ literally renders `"No items yet."` | ❌ stub | `app/(shop)/cart/page.tsx` | [ ] |
-| P4 | `pages/LoginScreen.jsx` | `/login` | ✅ real `axios` POST to hardcoded `http://localhost:5000` | ⚠️ works | `app/(auth)/login/page.tsx` | [ ] |
-| P5 | `pages/RegisterScreen.jsx` | `/register` | ✅ real `axios` POST to hardcoded `http://localhost:5000` | ⚠️ works | `app/(auth)/register/page.tsx` | [ ] |
-| C1 | `components/Navbar.jsx` | – | static links only; **no auth state, no cart count, no logout** | ⚠️ | `components/site-header.tsx` | [ ] |
-| C2 | `components/ProductCard.jsx` | – | reads **`product.id`** but Mongo returns **`_id`** → every link is `/product/undefined` | ❌ bug | `components/product-card.tsx` | [ ] |
-| C3 | `components/Loader.jsx` | – | fine | ✅ | `loading.tsx` / spinner | [ ] |
-| C4 | `components/Message.jsx` | – | fine | ✅ | `components/alert.tsx` | [ ] |
-| X1 | `context/AuthContext.jsx` | – | **0-byte empty file** — imported by nothing | ❌ empty | auth via httpOnly cookie + server session | [ ] |
-| X2 | `context/CartContext.jsx` | – | **0-byte empty file** — imported by nothing | ❌ empty | server cart + optimistic client store | [ ] |
+| P1 | `pages/HomeScreen.jsx` | `/` | ❌ **3 hardcoded products** (`iPhone 14`…), `via.placeholder.com` images | ❌ fake | `app/page.tsx`, `app/products/(list)/page.tsx` | [x] |
+| P2 | `pages/ProductScreen.jsx` | `/product/:id` | ❌ **hardcoded iPhone**, ignores `:id`, "Add to Cart" is a `<Link>` that adds nothing | ❌ fake | `app/products/[slug]/page.tsx` | [x] |
+| P3 | `pages/CartScreen.jsx` | `/cart` | ❌ literally renders `"No items yet."` | ❌ stub | `app/cart/page.tsx` | [x] |
+| P4 | `pages/LoginScreen.jsx` | `/login` | ✅ real `axios` POST to hardcoded `http://localhost:5000` | ⚠️ works | `app/(auth)/login/page.tsx` | [x] |
+| P5 | `pages/RegisterScreen.jsx` | `/register` | ✅ real `axios` POST to hardcoded `http://localhost:5000` | ⚠️ works | `app/(auth)/register/page.tsx` | [x] |
+| C1 | `components/Navbar.jsx` | – | static links only; **no auth state, no cart count, no logout** | ⚠️ | `components/site-header.tsx` | [x] |
+| C2 | `components/ProductCard.jsx` | – | reads **`product.id`** but Mongo returns **`_id`** → every link is `/product/undefined` | ❌ bug | `components/product-tile.tsx` | [x] |
+| C3 | `components/Loader.jsx` | – | fine | ✅ | `loading.tsx` files, `components/page-loading.tsx` | [x] |
+| C4 | `components/Message.jsx` | – | fine | ✅ | `Notice` in `components/ui.tsx` | [x] |
+| X1 | `context/AuthContext.jsx` | – | **0-byte empty file** — imported by nothing | ❌ empty | httpOnly cookie session in `server/auth/session.ts` | [x] |
+| X2 | `context/CartContext.jsx` | – | **0-byte empty file** — imported by nothing | ❌ empty | server cart with `useOptimistic` in `components/cart-contents.tsx` | [x] |
 
 **Missing entirely (no page exists):** checkout, order confirmation, order history, order detail,
 user profile/account, admin (any), 404, error boundary, search/filter UI.
