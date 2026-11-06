@@ -46,6 +46,56 @@ export type Paginated<T> = {
 };
 
 /**
+ * A product as it may cross a trust boundary.
+ *
+ * Plain JSON values only, so the same object serves an API response and a prop
+ * passed to a client component, neither of which can carry an `ObjectId` or a
+ * `Date`. Also drops Mongo internals (`__v`, the text-search `score`).
+ */
+export type PublicProduct = {
+  id: string;
+  name: string;
+  slug: string;
+  image: string;
+  description: string;
+  brand: string;
+  category: { id: string; name: string; slug: string } | null;
+  price: number;
+  countInStock: number;
+  rating: number;
+  numReviews: number;
+};
+
+export function toPublicProduct(product: ProductListItem): PublicProduct {
+  return {
+    id: String(product._id),
+    name: product.name,
+    slug: product.slug,
+    image: product.image,
+    description: product.description,
+    brand: product.brand,
+    category: product.category
+      ? {
+          id: String(product.category._id),
+          name: product.category.name,
+          slug: product.category.slug,
+        }
+      : null,
+    price: product.price,
+    countInStock: product.countInStock,
+    rating: product.rating,
+    numReviews: product.numReviews,
+  };
+}
+
+/** Maps a page of products to their public shape, keeping the paging fields. */
+export function toPublicPage(
+  page: Paginated<ProductListItem>,
+): Paginated<PublicProduct> {
+  return { ...page, items: page.items.map(toPublicProduct) };
+}
+
+/**
  * Clamps paging input, so a hostile `?limit=1000000` cannot exhaust memory.
  *
  * The `Number.isFinite` guard is load-bearing, not defensive noise: `NaN`
@@ -253,6 +303,32 @@ export async function requireProductById(
   const product = await getProductById(id, options);
   if (!product) throw notFound("Product");
   return product;
+}
+
+/**
+ * Other active products in the same category, best rated first.
+ *
+ * Takes the product's own id rather than deriving it, so a product page never
+ * recommends the product already on screen.
+ */
+export async function listRelatedProducts(
+  categoryId: string,
+  excludeProductId: string,
+  limit = 4,
+): Promise<ProductListItem[]> {
+  await connectDB();
+
+  if (!Types.ObjectId.isValid(categoryId)) return [];
+
+  return ProductModel.find({
+    category: categoryId,
+    isActive: true,
+    _id: { $ne: excludeProductId },
+  })
+    .sort({ rating: -1, _id: -1 })
+    .limit(limit)
+    .populate<{ category: ProductListItem["category"] }>("category", "name slug")
+    .lean<ProductListItem[]>();
 }
 
 /** Fetches one product by slug, for SEO-friendly URLs. */
