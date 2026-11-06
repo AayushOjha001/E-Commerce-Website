@@ -91,11 +91,11 @@ all pass; `/api/health` reports a live DB; `backend/` + `frontend/` still run.
 - [x] **T6.4** — Admin UI pages (products table + form, orders table), role-gated.
 - [x] **T6.5** — Tests: non-admin gets 403 on every admin route.
 
-## Batch 7 — Parity check & cutover
+## Batch 7 — Parity check & cutover ✅ complete
 - [x] **T7.1** — Walk the **AUDIT.md parity checklist** and tick every row (13 routes + 12 pages).
-- [ ] **T7.2** — Promote `web/` to the repo root; update scripts/paths.
-- [ ] **T7.3** — Delete `backend/` and `frontend/`; remove unused deps. *Only now* (D9).
-- [ ] **T7.4** — Full build + full test suite pass.
+- [x] **T7.2** — Promote `web/` to the repo root; update scripts/paths.
+- [x] **T7.3** — Delete `backend/` and `frontend/`; remove unused deps. *Only now* (D9).
+- [x] **T7.4** — Full build + full test suite pass.
 
 ## Batch 8 — Ship-ready
 - [ ] **T8.1** — GitHub Actions CI: install, lint, typecheck, test, build.
