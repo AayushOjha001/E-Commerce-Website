@@ -97,10 +97,10 @@ all pass; `/api/health` reports a live DB; `backend/` + `frontend/` still run.
 - [x] **T7.3** — Delete `backend/` and `frontend/`; remove unused deps. *Only now* (D9).
 - [x] **T7.4** — Full build + full test suite pass.
 
-## Batch 8 — Ship-ready
-- [ ] **T8.1** — GitHub Actions CI: install, lint, typecheck, test, build.
-- [ ] **T8.2** — README: setup, env vars, seed, run, test, deploy (Vercel + plain Node).
-- [ ] **T8.3** — Final security pass: no secrets, CORS/headers (**B14**), rate limit on auth.
+## Batch 8 — Ship-ready ✅ complete
+- [x] **T8.1** — GitHub Actions CI: install, lint, typecheck, test, build.
+- [x] **T8.2** — README: setup, env vars, seed, run, test, deploy (Vercel + plain Node).
+- [x] **T8.3** — Final security pass: no secrets, CORS/headers (**B14**), rate limit on auth.
 
 ---
 

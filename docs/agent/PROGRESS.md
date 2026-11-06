@@ -274,3 +274,34 @@ cancel and session reissue. The suite failed for all eleven.
 
 **Verified:** 595 tests with `REQUIRE_DB=1`, lint, typecheck. Purchase and admin flows run in Chrome
 with no console errors.
+
+### Batch 7 — Parity check and cutover ✅
+
+- **T7.1** — All 24 parity rows ticked by a script that requires each replacement file to exist, and
+  the target column now names what was actually built. Result: ✅
+- **T7.2, T7.3** — `web/` moved to the repo root, `backend/` and `frontend/` deleted. Neither held
+  untracked files, so both remain fully recoverable from history. Result: ✅ · commit `825247f`
+- **T7.4** — 599 tests, lint, typecheck and build pass from the new location. Result: ✅
+
+**Found in the build log:** the header's `try/catch` swallowed the signal Next.js uses for dynamic
+rendering. Every route was still dynamic, so nothing shipped wrong, but it risked serving one
+visitor's header to everyone and printed false errors. Uses `unstable_rethrow` now, with a test.
+
+### Batch 8 — Ship-ready ✅
+
+- **T8.1** — GitHub Actions: install, lint, typecheck, test against a real replica set with
+  `REQUIRE_DB=1`, build. Result: ✅
+- **T8.2** — README rewritten for someone new to the repo. Result: ✅
+- **T8.3** — Security pass. Result: ✅
+  - Next 16.3.6 to 16.4.5, zod to 4.6.7, fixing a critical and two high advisories. D11 is superseded
+    on the version only. Production dependencies report 0 vulnerabilities.
+  - 8 moderate advisories remain in dev-only lint tooling. The offered fix is a major downgrade of
+    `eslint-config-next`, which is worse than the problem, so they stay until upstream moves.
+  - Login rate limit with two counters (D22): client and account, because each alone has a hole.
+  - Security headers, `poweredByHeader: false`. CORS (audit B14) is closed by sending no CORS headers.
+  - No secrets in the repository.
+
+**Verified:** 612 tests with `REQUIRE_DB=1`, lint, typecheck, build. Against a **production build**:
+every security header present, real 404s, absolute `SITE_URL` image URLs, and the purchase, admin,
+review and open-redirect flows in Chrome with no console errors. Test data from those runs was then
+removed from the dev database with targeted deletes.
