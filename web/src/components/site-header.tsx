@@ -5,6 +5,7 @@ import { buttonClass, INPUT_CLASS } from "@/components/ui";
 import { logoutAction } from "@/server/auth/actions";
 import { getCurrentUser } from "@/server/auth/session";
 import { getCart } from "@/server/services/cart";
+import { MAX_SEARCH_LENGTH } from "@/server/services/catalog-query";
 
 /**
  * Site header.
@@ -63,6 +64,7 @@ export async function SiteHeader() {
             id="site-search"
             name="search"
             type="search"
+            maxLength={MAX_SEARCH_LENGTH}
             placeholder="Search products"
             className={INPUT_CLASS}
           />

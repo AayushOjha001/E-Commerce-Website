@@ -13,7 +13,8 @@ export type ServiceErrorCode =
   | "conflict"
   | "unauthenticated"
   | "forbidden"
-  | "out_of_stock";
+  | "out_of_stock"
+  | "payment_declined";
 
 export class ServiceError extends Error {
   readonly code: ServiceErrorCode;
@@ -67,6 +68,9 @@ export const outOfStock = (productName: string, available: number) =>
       ? `${productName} is out of stock`
       : `Only ${available} of ${productName} left in stock`,
   );
+
+export const paymentDeclined = (message: string) =>
+  new ServiceError("payment_declined", message);
 
 export function isServiceError(error: unknown): error is ServiceError {
   return error instanceof ServiceError;

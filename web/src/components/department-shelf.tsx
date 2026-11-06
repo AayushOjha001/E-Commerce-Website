@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import { ProductArt } from "@/components/product-art";
+import { catalogHref } from "@/lib/catalog-url";
 import { departmentClass } from "@/lib/department";
 import { formatPrice, pluralise } from "@/lib/format";
 import type { PublicProduct } from "@/server/services/products";
@@ -41,7 +42,7 @@ export function DepartmentShelf({
         <div className="pb-4 lg:pb-0">
           <h2 id={`shelf-${slug}`} className="display text-4xl lg:text-5xl">
             <Link
-              href={`/products?category=${slug}`}
+              href={catalogHref({ category: slug })}
               className="underline-offset-8 hover:underline"
             >
               {name}

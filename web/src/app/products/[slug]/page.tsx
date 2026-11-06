@@ -3,17 +3,21 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { cache } from "react";
 
+import { AddToCart } from "@/components/add-to-cart";
 import { ProductArt } from "@/components/product-art";
 import { ProductGrid } from "@/components/product-tile";
+import { catalogHref } from "@/lib/catalog-url";
 import { departmentClass } from "@/lib/department";
 import { formatPrice, pluralise } from "@/lib/format";
+import { productJsonLd } from "@/lib/product-json-ld";
+import { siteUrl } from "@/lib/site-url";
 import {
   getProductBySlug,
   listRelatedProducts,
   toPublicProduct,
 } from "@/server/services/products";
 
-/** Below this, the page warns that stock is running out. */
+/** At or below this, the page warns that stock is running out. */
 const LOW_STOCK_THRESHOLD = 5;
 
 // Cached per request: metadata and the page both need the product, and without
@@ -66,40 +70,11 @@ export default async function ProductPage(props: PageProps<"/products/[slug]">) 
       )
     : [];
 
-  // Structured data for search results. `<` is escaped so a product name cannot
-  // close this script tag and inject markup.
-  const jsonLd = JSON.stringify({
-    "@context": "https://schema.org",
-    "@type": "Product",
-    name: product.name,
-    description: product.description,
-    image: product.image,
-    brand: { "@type": "Brand", name: product.brand },
-    offers: {
-      "@type": "Offer",
-      price: product.price,
-      priceCurrency: "USD",
-      availability:
-        product.countInStock > 0
-          ? "https://schema.org/InStock"
-          : "https://schema.org/OutOfStock",
-    },
-    ...(product.numReviews > 0
-      ? {
-          aggregateRating: {
-            "@type": "AggregateRating",
-            ratingValue: product.rating,
-            reviewCount: product.numReviews,
-          },
-        }
-      : {}),
-  }).replace(/</g, "\\u003c");
-
   return (
     <main>
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: jsonLd }}
+        dangerouslySetInnerHTML={{ __html: productJsonLd(product, siteUrl()) }}
       />
 
       <div className="grid lg:grid-cols-2">
@@ -111,7 +86,7 @@ export default async function ProductPage(props: PageProps<"/products/[slug]">) 
             src={product.image}
             alt={product.name}
             size={560}
-            priority
+            eager
             sizes="(min-width: 1024px) 50vw, 100vw"
             className="w-full max-w-md lg:max-w-xl"
           />
@@ -121,7 +96,7 @@ export default async function ProductPage(props: PageProps<"/products/[slug]">) 
           {product.category ? (
             <nav aria-label="Breadcrumb">
               <Link
-                href={`/products?category=${product.category.slug}`}
+                href={catalogHref({ category: product.category.slug })}
                 className="font-medium underline-offset-4 hover:underline"
               >
                 {product.category.name}
@@ -145,6 +120,14 @@ export default async function ProductPage(props: PageProps<"/products/[slug]">) 
               </p>
             ) : null}
           </div>
+
+          {product.countInStock > 0 ? (
+            <AddToCart
+              productId={product.id}
+              countInStock={product.countInStock}
+              returnTo={`/products/${product.slug}`}
+            />
+          ) : null}
 
           <p className="mt-6 max-w-[62ch] text-lg leading-relaxed">
             {product.description}

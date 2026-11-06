@@ -13,14 +13,15 @@ export function ProductArt({
   alt,
   size,
   sizes,
-  priority = false,
+  eager = false,
   className = "",
 }: {
   src: string;
   alt: string;
   size: number;
   sizes?: string;
-  priority?: boolean;
+  /** For the largest image on a page, so it is not lazy-loaded. */
+  eager?: boolean;
   className?: string;
 }) {
   return (
@@ -30,7 +31,8 @@ export function ProductArt({
       width={size}
       height={size}
       sizes={sizes}
-      priority={priority}
+      loading={eager ? "eager" : undefined}
+      fetchPriority={eager ? "high" : undefined}
       unoptimized
       className={className}
     />

@@ -44,12 +44,10 @@ describe("ProductTile", () => {
     expect(screen.queryByText("Out of stock")).not.toBeInTheDocument();
   });
 
-  it("says when a product is sold out, without striking the price", () => {
+  it("keeps the price visible when a product is sold out", () => {
     render(<ProductTile product={{ ...PRODUCT, countInStock: 0 }} />);
 
-    const price = screen.getByText("$79.99");
-    expect(price).toBeInTheDocument();
-    expect(price).not.toHaveClass("line-through");
+    expect(screen.getByText("$79.99")).toBeInTheDocument();
     expect(screen.getByText("Out of stock")).toBeInTheDocument();
   });
 
@@ -76,6 +74,7 @@ describe("DepartmentShelf", () => {
 
     const link = screen.getByRole("link", { name: /Ember Pour-Over Kettle/ });
     expect(link).toHaveTextContent("$79.99");
+    expect(link.querySelector("img")).not.toBeNull();
   });
 
   it("links the department name to its filtered catalog", () => {

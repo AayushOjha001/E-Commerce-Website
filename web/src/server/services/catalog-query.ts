@@ -13,28 +13,28 @@ import { PRODUCT_SORTS, type ListProductsOptions } from "./products";
 
 export const MAX_SEARCH_LENGTH = 100;
 
-const optionalNumber = z
+// Matched as text first: `Number()` alone also accepts "0x10", "1e3" and "".
+const decimal = z
   .string()
   .trim()
-  .min(1)
+  .regex(/^\d+(\.\d+)?$/)
   .transform(Number)
-  .pipe(z.number().finite().min(0));
+  .pipe(z.number().finite());
+
+const wholeNumber = z
+  .string()
+  .trim()
+  .regex(/^\d+$/)
+  .transform(Number)
+  .pipe(z.number().int().min(1));
 
 const fields = {
-  page: z
-    .string()
-    .trim()
-    .transform(Number)
-    .pipe(z.number().int().min(1)),
-  limit: z
-    .string()
-    .trim()
-    .transform(Number)
-    .pipe(z.number().int().min(1)),
+  page: wholeNumber,
+  limit: wholeNumber,
   search: z.string().trim().min(1).max(MAX_SEARCH_LENGTH),
   category: z.string().trim().toLowerCase().min(1).max(120),
-  minPrice: optionalNumber,
-  maxPrice: optionalNumber,
+  minPrice: decimal,
+  maxPrice: decimal,
   sort: z.enum(PRODUCT_SORTS),
 };
 
@@ -69,6 +69,10 @@ export type RawSearchParams = Record<string, string | string[] | undefined>;
  * A repeated parameter (`?category=a&category=b`) arrives as an array; the first
  * value is used. An inverted price range is dropped too, since `listProducts`
  * would otherwise throw and turn a bad link into an error page.
+ *
+ * `limit` is API-only. The page's links do not carry it, so honouring it here
+ * would compute the page count from one size and fetch the next page at another,
+ * skipping products.
  */
 export function parseCatalogPageParams(
   params: RawSearchParams,
@@ -76,6 +80,8 @@ export function parseCatalogPageParams(
   const options: Record<string, unknown> = {};
 
   for (const name of FIELD_NAMES) {
+    if (name === "limit") continue;
+
     const raw = params[name];
     const value = Array.isArray(raw) ? raw[0] : raw;
     if (value === undefined || value === "") continue;

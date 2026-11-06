@@ -17,13 +17,20 @@ export type CartLine = {
   name: string;
   slug: string;
   image: string;
+  /** Picks the colour field behind the drawing. */
+  categorySlug: string | null;
   price: number;
   qty: number;
   /** `price * qty`, rounded. */
   lineTotal: number;
+  /** What can actually be bought: 0 for a product withdrawn from sale. */
   countInStock: number;
   /** True when stock has fallen below the quantity already in the cart. */
   exceedsStock: boolean;
+};
+
+type PopulatedCartProduct = Omit<Product, "category"> & {
+  category: { slug: string } | null;
 };
 
 export type CartView = {
@@ -94,8 +101,11 @@ export async function getCart(userId: string): Promise<CartView> {
   if (!Types.ObjectId.isValid(userId)) return EMPTY_CART;
 
   const cart = await CartModel.findOne({ user: userId }).populate<{
-    items: { product: Product | null; qty: number }[];
-  }>("items.product");
+    items: { product: PopulatedCartProduct | null; qty: number }[];
+  }>({
+    path: "items.product",
+    populate: { path: "category", select: "slug" },
+  });
 
   if (!cart || cart.items.length === 0) return EMPTY_CART;
 
@@ -105,16 +115,22 @@ export async function getCart(userId: string): Promise<CartView> {
     if (!item.product) continue;
 
     const product = item.product;
+    // A soft-deleted product stays in the cart so the shopper can see what
+    // happened, but it counts as out of stock. Otherwise the cart would look
+    // fine and checkout would be the first thing to refuse it.
+    const available = product.isActive ? product.countInStock : 0;
+
     items.push({
       productId: String(product._id),
       name: product.name,
       slug: product.slug,
       image: product.image,
+      categorySlug: product.category?.slug ?? null,
       price: product.price,
       qty: item.qty,
       lineTotal: sumLineItems([{ price: product.price, qty: item.qty }]),
-      countInStock: product.countInStock,
-      exceedsStock: item.qty > product.countInStock,
+      countInStock: available,
+      exceedsStock: item.qty > available,
     });
   }
 

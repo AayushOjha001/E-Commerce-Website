@@ -35,6 +35,7 @@ const STATUS_BY_CODE: Record<ServiceErrorCode, number> = {
   forbidden: 403,
   // 409: the request was well-formed, but the world changed under it.
   out_of_stock: 409,
+  payment_declined: 402,
 };
 
 export function jsonOk<T>(data: T, status = 200): NextResponse {

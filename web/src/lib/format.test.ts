@@ -22,7 +22,9 @@ describe("formatPriceInText", () => {
 
 describe("formatDate", () => {
   it("does not shift the day with the machine's time zone", () => {
+    // Both ends of the day, so this fails in a zone on either side of UTC.
     expect(formatDate("2026-03-01T00:30:00.000Z")).toBe("Mar 1, 2026");
+    expect(formatDate("2026-03-01T23:30:00.000Z")).toBe("Mar 1, 2026");
   });
 });
 

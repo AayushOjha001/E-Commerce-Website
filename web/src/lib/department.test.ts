@@ -17,6 +17,24 @@ describe("departmentField", () => {
     expect(Object.keys(DEPARTMENT_FIELDS)).toContain(first);
   });
 
+  it("spreads unknown categories across the palette", () => {
+    const fields = new Set(
+      ["garden", "tools", "toys", "books", "games", "paint", "bikes", "tents"].map(
+        departmentField,
+      ),
+    );
+
+    expect(fields.size).toBeGreaterThan(1);
+  });
+
+  it.each(["constructor", "__proto__", "toString"])(
+    "gives %s a real field, not an inherited property",
+    (slug) => {
+      expect(Object.keys(DEPARTMENT_FIELDS)).toContain(departmentField(slug));
+      expect(departmentClass(slug)).toMatch(/^bg-/);
+    },
+  );
+
   it("falls back when a product has lost its category", () => {
     expect(departmentField(null)).toBe("sky");
     expect(departmentField(undefined)).toBe("sky");
