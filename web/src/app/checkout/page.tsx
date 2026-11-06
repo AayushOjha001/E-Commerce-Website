@@ -21,8 +21,8 @@ export default async function CheckoutPage() {
   // The cart page explains both of these; there is nothing to do here.
   if (cart.items.length === 0 || cart.hasIssues) redirect("/cart");
 
-  // For display. placeOrderAction recomputes from the database, so these figures
-  // are never trusted, and a price change is caught by the order itself.
+  // For display only. Creating the order recomputes these from the database and
+  // refuses to go ahead if the result differs from the total shown here.
   const totals = calculateOrderTotals(cart.items);
 
   return (
@@ -32,7 +32,7 @@ export default async function CheckoutPage() {
       <div className="mt-8 grid items-start gap-10 lg:grid-cols-[1fr_380px]">
         <CheckoutForm
           initialAddress={lastAddress ?? { fullName: user.name }}
-          totalLabel={formatPrice(totals.totalPrice)}
+          total={totals.totalPrice}
         />
 
         <section aria-labelledby="summary" className="space-y-3 bg-white p-5 lg:order-last">

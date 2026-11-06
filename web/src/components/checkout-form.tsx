@@ -3,6 +3,7 @@
 import { useActionState } from "react";
 
 import { INPUT_CLASS, Notice, buttonClass } from "@/components/ui";
+import { formatPrice } from "@/lib/format";
 import type { Address } from "@/server/models/address";
 import {
   PAYMENT_METHODS,
@@ -27,16 +28,18 @@ const FIELDS: {
 
 export function CheckoutForm({
   initialAddress,
-  totalLabel,
+  total,
 }: {
   initialAddress: Partial<Address>;
-  totalLabel: string;
+  total: number;
 }) {
   const [state, formAction, isPending] = useActionState(placeOrderAction, {});
   const chosenMethod = state.values?.paymentMethod ?? PAYMENT_METHODS[0];
 
   return (
     <form action={formAction} className="space-y-8" noValidate>
+      {/* The total on the button below. The server refuses to charge any other. */}
+      <input type="hidden" name="expectedTotal" value={total} />
       {state.error ? <Notice>{state.error}</Notice> : null}
 
       <fieldset>
@@ -112,7 +115,7 @@ export function CheckoutForm({
         disabled={isPending}
         className={buttonClass({ size: "lg", className: "w-full sm:w-auto" })}
       >
-        {isPending ? "Placing order…" : `Place order, ${totalLabel}`}
+        {isPending ? "Placing order…" : `Place order, ${formatPrice(total)}`}
       </button>
     </form>
   );

@@ -7,10 +7,10 @@ import {
   sumLineItems,
   type Product,
 } from "@/server/models";
+import { MAX_QTY_PER_ITEM } from "@/lib/cart-limits";
 import { notFound, outOfStock, validationFailed } from "./errors";
 
-/** Upper bound per line, so one request cannot reserve the whole catalog. */
-export const MAX_QTY_PER_ITEM = 99;
+export { MAX_QTY_PER_ITEM };
 
 export type CartLine = {
   productId: string;
@@ -200,18 +200,24 @@ export async function setCartItemQty(
   assertValidUserId(userId);
   assertValidQty(qty);
 
-  const product = await requirePurchasableProduct(productId);
+  if (!Types.ObjectId.isValid(productId)) throw notFound("Product");
 
   const cart = await CartModel.findOne({ user: userId });
   if (!cart) throw notFound("Cart");
 
   const existing = cart.items.find(
-    (item) => String(item.product) === String(product._id),
+    (item) => String(item.product) === String(productId),
   );
   if (!existing) throw notFound("Cart item");
 
-  if (qty > product.countInStock) {
-    throw outOfStock(product.name, product.countInStock);
+  // Only raising a quantity needs checking. Lowering is how a shopper fixes a
+  // line that stock has fallen below, so refusing it would trap them there.
+  if (qty > existing.qty) {
+    const product = await requirePurchasableProduct(productId);
+
+    if (qty > product.countInStock) {
+      throw outOfStock(product.name, product.countInStock);
+    }
   }
 
   existing.qty = qty;

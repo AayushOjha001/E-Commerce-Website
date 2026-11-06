@@ -6,6 +6,7 @@ import {
   OrderModel,
   ProductModel,
   sumLineItems,
+  toCents,
   type Address,
   type Order,
   type OrderItem,
@@ -22,6 +23,7 @@ import {
 import { calculateOrderTotals } from "./pricing";
 import {
   paymentProvider,
+  type ChargeResult,
   type PaymentProvider,
 } from "@/server/payments/provider";
 
@@ -95,7 +97,26 @@ export function toPublicOrder(order: Order): PublicOrder {
 export type CreateOrderInput = {
   shippingAddress: Address;
   paymentMethod: string;
+  /**
+   * The total the shopper was shown. When given, an order that would cost
+   * anything else is refused rather than charged.
+   */
+  expectedTotal?: number;
 };
+
+/** Unpaid orders hold stock, so one account can only hold so much at once. */
+export const MAX_UNPAID_ORDERS = 5;
+
+/** How long a claim blocks other payments, in case a process dies mid-charge. */
+export const PAYMENT_CLAIM_TTL_MS = 5 * 60 * 1000;
+
+/** Whether a payment is being taken for this order right now. */
+export function isPaymentInProgress(order: Order): boolean {
+  if (order.paymentResult?.status !== "processing") return false;
+
+  const claimedAt = Date.parse(order.paymentResult.updateTime ?? "");
+  return Date.now() - claimedAt < PAYMENT_CLAIM_TTL_MS;
+}
 
 export type OrderListItem = Pick<
   Order,
@@ -144,6 +165,17 @@ export async function createOrderFromCart(
     let created: Order | undefined;
 
     await session.withTransaction(async () => {
+      const unpaid = await OrderModel.countDocuments({
+        user: userId,
+        status: "pending",
+      }).session(session);
+
+      if (unpaid >= MAX_UNPAID_ORDERS) {
+        throw conflict(
+          "You have too many unpaid orders. Pay for or cancel one first.",
+        );
+      }
+
       const cart = await CartModel.findOne({ user: userId })
         .populate<{ items: { product: Product | null; qty: number }[] }>(
           "items.product",
@@ -204,6 +236,16 @@ export async function createOrderFromCart(
 
       const totals = calculateOrderTotals(orderItems);
 
+      // Inside the transaction, so a mismatch also undoes the stock changes.
+      if (
+        input.expectedTotal !== undefined &&
+        toCents(input.expectedTotal) !== toCents(totals.totalPrice)
+      ) {
+        throw conflict(
+          "Your order total changed. Check the new total, then place your order again.",
+        );
+      }
+
       const [order] = await OrderModel.create(
         [
           {
@@ -241,10 +283,10 @@ export async function createOrderFromCart(
 /**
  * Pays a pending order through the payment provider.
  *
- * Ownership is checked first, so paying is as protected as reading. The write
- * carries `isPaid: false` in its filter, which settles two simultaneous attempts:
- * only one can flip the flag, and the provider's idempotency key is what stops a
- * real provider charging twice for the same order.
+ * Ownership is checked first, so paying is as protected as reading. The order is
+ * then claimed atomically *before* the charge: with the claim afterwards, the
+ * loser of a race would already have paid and could only be told so. A claim
+ * also stops an order being cancelled while its money is moving.
  */
 export async function payOrder(
   orderId: string,
@@ -259,22 +301,62 @@ export async function payOrder(
     throw conflict("This order can no longer be paid");
   }
 
-  const result = await provider.charge({
-    amount: order.totalPrice,
-    method: input.paymentMethod,
-    idempotencyKey: String(order._id),
-  });
+  const now = new Date();
+  const claimExpiry = new Date(now.getTime() - PAYMENT_CLAIM_TTL_MS);
 
-  if (!result.ok) {
-    await OrderModel.updateOne(
+  const claimed = await OrderModel.findOneAndUpdate(
+    {
+      _id: order._id,
+      isPaid: false,
+      status: "pending",
+      $or: [
+        { "paymentResult.status": { $ne: "processing" } },
+        { "paymentResult.updateTime": { $lt: claimExpiry.toISOString() } },
+      ],
+    },
+    {
+      $set: {
+        paymentMethod: input.paymentMethod,
+        "paymentResult.status": "processing",
+        "paymentResult.updateTime": now.toISOString(),
+      },
+      $inc: { paymentAttempts: 1 },
+    },
+    { returnDocument: "after" },
+  ).lean<Order>();
+
+  if (!claimed) {
+    throw conflict("A payment for this order is already in progress");
+  }
+
+  const release = (status: string, providerName: string) =>
+    OrderModel.updateOne(
       { _id: order._id, isPaid: false },
       {
         $set: {
-          paymentMethod: input.paymentMethod,
-          paymentResult: { status: "declined", provider: result.provider },
+          paymentResult: {
+            status,
+            provider: providerName,
+            updateTime: new Date().toISOString(),
+          },
         },
       },
     );
+
+  let result: ChargeResult;
+  try {
+    result = await provider.charge({
+      amount: claimed.totalPrice,
+      method: input.paymentMethod,
+      idempotencyKey: `${order._id}:${claimed.paymentAttempts}`,
+    });
+  } catch (error) {
+    await release("failed", provider.name);
+    throw error;
+  }
+
+  if (!result.ok) {
+    await release("declined", result.provider);
     throw paymentDeclined(result.reason);
   }
 
@@ -285,7 +367,6 @@ export async function payOrder(
         isPaid: true,
         paidAt: new Date(),
         status: "paid",
-        paymentMethod: input.paymentMethod,
         paymentResult: {
           id: result.id,
           status: result.status,
@@ -322,9 +403,12 @@ export async function getLastShippingAddress(
   return order?.shippingAddress ?? null;
 }
 
+const MAX_LISTED_ORDERS = 100;
+
 /** Lists a user's own orders, newest first. */
 export async function listOrdersForUser(
   userId: string,
+  options: { limit?: number } = {},
 ): Promise<OrderListItem[]> {
   await connectDB();
 
@@ -332,6 +416,8 @@ export async function listOrdersForUser(
 
   const orders = await OrderModel.find({ user: userId })
     .sort({ createdAt: -1, _id: -1 })
+    .limit(options.limit ?? MAX_LISTED_ORDERS)
+    .select("totalPrice status isPaid paidAt isDelivered createdAt orderItems.qty")
     .lean<Order[]>();
 
   return orders.map((order) => ({

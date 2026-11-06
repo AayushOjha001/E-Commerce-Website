@@ -14,6 +14,8 @@ export type AccountFormState = {
   error?: string;
   saved?: string;
   fieldErrors?: Record<string, string>;
+  /** Echoed back so a failed save does not wipe what was typed. */
+  values?: Record<string, string>;
 };
 
 function fieldErrors(error: z.ZodError): Record<string, string> {
@@ -38,21 +40,43 @@ export async function updateProfileAction(
   const user = await getCurrentUser();
   if (!user) redirect("/login?next=%2Faccount");
 
-  const parsed = profileSchema.safeParse({
-    name: formData.get("name"),
-    email: formData.get("email"),
-  });
+  const values = {
+    name: String(formData.get("name") ?? ""),
+    email: String(formData.get("email") ?? ""),
+  };
+
+  const parsed = profileSchema.safeParse(values);
   if (!parsed.success) {
     return {
       error: "Check the highlighted fields",
       fieldErrors: fieldErrors(parsed.error),
+      values,
     };
+  }
+
+  // Login is by email and there is no password reset, so a stolen session that
+  // could change the address could lock the owner out for good.
+  if (parsed.data.email.toLowerCase() !== user.email) {
+    const verified = await verifyCredentials(
+      user.email,
+      String(formData.get("emailPassword") ?? ""),
+    );
+
+    if (!verified) {
+      return {
+        error: "Check the highlighted fields",
+        fieldErrors: {
+          emailPassword: "Enter your current password to change your email",
+        },
+        values,
+      };
+    }
   }
 
   try {
     await updateUserProfile(user.id, parsed.data);
   } catch (error) {
-    if (isServiceError(error)) return { error: error.message };
+    if (isServiceError(error)) return { error: error.message, values };
     throw error;
   }
 
@@ -64,8 +88,8 @@ export async function updateProfileAction(
 /**
  * Changes the password, after proving knowledge of the current one.
  *
- * A live session is not proof enough: this is the one change that locks everyone
- * else out, so a borrowed laptop or a stolen cookie must not be able to make it.
+ * A live session is not proof enough: this change locks everyone else out, so a
+ * borrowed laptop or a stolen cookie must not be able to make it.
  */
 export async function changePasswordAction(
   _previous: AccountFormState,
@@ -96,7 +120,12 @@ export async function changePasswordAction(
     };
   }
 
-  await updateUserProfile(user.id, { password: parsed.data.newPassword });
+  try {
+    await updateUserProfile(user.id, { password: parsed.data.newPassword });
+  } catch (error) {
+    if (isServiceError(error)) return { error: error.message };
+    throw error;
+  }
 
   // A password change bumps the token version, ending every session. Reissue
   // this one so the person making the change stays signed in.

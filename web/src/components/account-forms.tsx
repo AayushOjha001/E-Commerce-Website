@@ -53,7 +53,7 @@ function AccountForm({
               name={field.name}
               type={field.type}
               autoComplete={field.autoComplete}
-              defaultValue={field.defaultValue}
+              defaultValue={state.values?.[field.name] ?? field.defaultValue}
               aria-invalid={error ? true : undefined}
               aria-describedby={error ? `${field.name}-error` : undefined}
               className={INPUT_CLASS}
@@ -86,6 +86,12 @@ export function ProfileForm({ name, email }: { name: string; email: string }) {
       fields={[
         { name: "name", label: "Name", type: "text", autoComplete: "name", defaultValue: name },
         { name: "email", label: "Email", type: "email", autoComplete: "email", defaultValue: email },
+        {
+          name: "emailPassword",
+          label: "Current password (only to change your email)",
+          type: "password",
+          autoComplete: "current-password",
+        },
       ]}
     />
   );

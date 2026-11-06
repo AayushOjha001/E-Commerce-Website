@@ -9,6 +9,7 @@ import { Notice, PageTitle } from "@/components/ui";
 import { formatDate, formatPrice } from "@/lib/format";
 import { requireUserForPage } from "@/server/auth/session";
 import { isServiceError } from "@/server/services/errors";
+import { UNPAID_ORDER_TTL_MINUTES } from "@/server/services/orders-admin";
 import {
   getOrderForUser,
   orderNumber,
@@ -24,7 +25,12 @@ export async function generateMetadata(
 
 async function loadOrder(id: string, userId: string, isAdmin: boolean) {
   try {
-    return toPublicOrder(await getOrderForUser(id, userId, { isAdmin }));
+    const order = await getOrderForUser(id, userId, { isAdmin });
+
+    return {
+      order: toPublicOrder(order),
+      isOwner: String(order.user) === userId,
+    };
   } catch (error) {
     // Someone else's order and a missing one look identical here, on purpose.
     if (isServiceError(error)) notFound();
@@ -37,7 +43,7 @@ export default async function OrderPage(props: PageProps<"/account/orders/[id]">
   const { result } = await props.searchParams;
 
   const user = await requireUserForPage(`/account/orders/${id}`);
-  const order = await loadOrder(id, user.id, user.role === "admin");
+  const { order, isOwner } = await loadOrder(id, user.id, user.role === "admin");
   const awaitingPayment = order.status === "pending";
 
   return (
@@ -66,6 +72,15 @@ export default async function OrderPage(props: PageProps<"/account/orders/[id]">
             Your order is saved, but the payment was declined. Try paying again
             below.
           </Notice>
+        ) : null}
+        {result === "failed" && awaitingPayment ? (
+          <Notice>
+            Your order is saved, but the payment could not be completed. Try
+            paying again below.
+          </Notice>
+        ) : null}
+        {result === "cancelled" && order.status === "cancelled" ? (
+          <Notice tone="success">Your order is cancelled.</Notice>
         ) : null}
         <OrderProgress status={order.status} />
       </div>
@@ -143,7 +158,12 @@ export default async function OrderPage(props: PageProps<"/account/orders/[id]">
             </dl>
           </section>
 
-          {awaitingPayment ? <RetryPayment orderId={order.id} /> : null}
+          {awaitingPayment && isOwner ? (
+            <RetryPayment
+              orderId={order.id}
+              timeLimitMinutes={UNPAID_ORDER_TTL_MINUTES}
+            />
+          ) : null}
         </div>
       </div>
     </main>

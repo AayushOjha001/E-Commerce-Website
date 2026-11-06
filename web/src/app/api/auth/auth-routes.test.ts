@@ -288,7 +288,7 @@ describe.skipIf(!dbReachable)("auth route handlers", () => {
     });
 
     it("changes the password and keeps login working", async () => {
-      await patchProfile(jsonRequest({ password: "a-brand-new-password" }));
+      await patchProfile(jsonRequest({ password: "a-brand-new-password", currentPassword: VALID.password }));
       jar.clear();
 
       const ok = await login(
@@ -308,7 +308,7 @@ describe.skipIf(!dbReachable)("auth route handlers", () => {
       // token stolen beforehand would outlive the very change meant to stop it.
       const stolen = jar.raw(SESSION_COOKIE)!.value;
 
-      await patchProfile(jsonRequest({ password: "a-brand-new-password" }));
+      await patchProfile(jsonRequest({ password: "a-brand-new-password", currentPassword: VALID.password }));
 
       jar.clear();
       jar.seed(SESSION_COOKIE, stolen);
@@ -318,7 +318,7 @@ describe.skipIf(!dbReachable)("auth route handlers", () => {
     it("keeps the session that made the change signed in", async () => {
       // The cutoff must not sign out the very session that changed it.
       const response = await patchProfile(
-        jsonRequest({ password: "a-brand-new-password" }),
+        jsonRequest({ password: "a-brand-new-password", currentPassword: VALID.password }),
       );
 
       expect(response.status).toBe(200);
@@ -348,9 +348,40 @@ describe.skipIf(!dbReachable)("auth route handlers", () => {
         jsonRequest({ ...VALID, email: "grace@example.com", name: "Grace" }),
       );
 
-      const response = await patchProfile(jsonRequest({ email: VALID.email }));
+      const response = await patchProfile(
+        jsonRequest({ email: VALID.email, currentPassword: VALID.password }),
+      );
 
       expect(response.status).toBe(409);
+    });
+
+    it("refuses an email change without the current password", async () => {
+      const response = await patchProfile(
+        jsonRequest({ email: "stolen@example.com" }),
+      );
+
+      expect(response.status).toBe(403);
+      const stored = await UserModel.findOne({ email: VALID.email });
+      expect(stored).not.toBeNull();
+    });
+
+    it("refuses a password change with the wrong current password", async () => {
+      const response = await patchProfile(
+        jsonRequest({
+          password: "a-brand-new-password",
+          currentPassword: "not-the-password",
+        }),
+      );
+
+      expect(response.status).toBe(403);
+    });
+
+    it("does not ask for a password to re-save the same email", async () => {
+      const response = await patchProfile(
+        jsonRequest({ email: VALID.email.toUpperCase() }),
+      );
+
+      expect(response.status).toBe(200);
     });
   });
 });
