@@ -169,7 +169,10 @@ is **no `.env.example`**, so required vars (`PORT`, `MONGO_URI`, `JWT_SECRET`) a
 
 ---
 
-## 5. How to run the old app (recorded for the "keep old app runnable" rule)
+## 5. How the old app ran (historical)
+
+> `backend/` and `frontend/` were removed in Batch 7. These steps no longer work and are kept only as
+> a record of the audit. To run the app today, follow the root `README.md`.
 
 ```bash
 # 1. dev DB (host port 27018 to avoid the occupied 27017)
