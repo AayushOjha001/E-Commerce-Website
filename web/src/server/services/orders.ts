@@ -5,6 +5,7 @@ import {
   CartModel,
   OrderModel,
   ProductModel,
+  sumLineItems,
   type Address,
   type Order,
   type OrderItem,
@@ -15,9 +16,81 @@ import {
   forbidden,
   notFound,
   outOfStock,
+  paymentDeclined,
   validationFailed,
 } from "./errors";
 import { calculateOrderTotals } from "./pricing";
+import {
+  paymentProvider,
+  type PaymentProvider,
+} from "@/server/payments/provider";
+
+/** An order as it may cross a trust boundary: plain JSON values only. */
+export type PublicOrder = {
+  id: string;
+  /** Short reference shown to people. The full id stays in the URL. */
+  number: string;
+  items: {
+    productId: string;
+    name: string;
+    qty: number;
+    image: string;
+    price: number;
+    lineTotal: number;
+  }[];
+  shippingAddress: Address;
+  paymentMethod: string;
+  itemsPrice: number;
+  taxPrice: number;
+  shippingPrice: number;
+  totalPrice: number;
+  status: Order["status"];
+  isPaid: boolean;
+  paidAt: string | null;
+  isDelivered: boolean;
+  deliveredAt: string | null;
+  createdAt: string;
+};
+
+export function orderNumber(id: unknown): string {
+  return String(id).slice(-8).toUpperCase();
+}
+
+export function toPublicOrder(order: Order): PublicOrder {
+  return {
+    id: String(order._id),
+    number: orderNumber(order._id),
+    items: order.orderItems.map((item) => ({
+      productId: String(item.product),
+      name: item.name,
+      qty: item.qty,
+      image: item.image,
+      price: item.price,
+      lineTotal: sumLineItems([item]),
+    })),
+    shippingAddress: {
+      fullName: order.shippingAddress.fullName,
+      address: order.shippingAddress.address,
+      city: order.shippingAddress.city,
+      postalCode: order.shippingAddress.postalCode,
+      country: order.shippingAddress.country,
+      phone: order.shippingAddress.phone,
+    },
+    paymentMethod: order.paymentMethod,
+    itemsPrice: order.itemsPrice,
+    taxPrice: order.taxPrice,
+    shippingPrice: order.shippingPrice,
+    totalPrice: order.totalPrice,
+    status: order.status,
+    isPaid: order.isPaid,
+    paidAt: order.paidAt ? new Date(order.paidAt).toISOString() : null,
+    isDelivered: order.isDelivered,
+    deliveredAt: order.deliveredAt
+      ? new Date(order.deliveredAt).toISOString()
+      : null,
+    createdAt: new Date(order.createdAt).toISOString(),
+  };
+}
 
 export type CreateOrderInput = {
   shippingAddress: Address;
@@ -165,6 +238,90 @@ export async function createOrderFromCart(
   }
 }
 
+/**
+ * Pays a pending order through the payment provider.
+ *
+ * Ownership is checked first, so paying is as protected as reading. The write
+ * carries `isPaid: false` in its filter, which settles two simultaneous attempts:
+ * only one can flip the flag, and the provider's idempotency key is what stops a
+ * real provider charging twice for the same order.
+ */
+export async function payOrder(
+  orderId: string,
+  userId: string,
+  input: { paymentMethod: string; provider?: PaymentProvider },
+): Promise<Order> {
+  const provider = input.provider ?? paymentProvider;
+  const order = await getOrderForUser(orderId, userId);
+
+  if (order.isPaid) throw conflict("This order has already been paid");
+  if (order.status !== "pending") {
+    throw conflict("This order can no longer be paid");
+  }
+
+  const result = await provider.charge({
+    amount: order.totalPrice,
+    method: input.paymentMethod,
+    idempotencyKey: String(order._id),
+  });
+
+  if (!result.ok) {
+    await OrderModel.updateOne(
+      { _id: order._id, isPaid: false },
+      {
+        $set: {
+          paymentMethod: input.paymentMethod,
+          paymentResult: { status: "declined", provider: result.provider },
+        },
+      },
+    );
+    throw paymentDeclined(result.reason);
+  }
+
+  const paid = await OrderModel.findOneAndUpdate(
+    { _id: order._id, isPaid: false, status: "pending" },
+    {
+      $set: {
+        isPaid: true,
+        paidAt: new Date(),
+        status: "paid",
+        paymentMethod: input.paymentMethod,
+        paymentResult: {
+          id: result.id,
+          status: result.status,
+          updateTime: new Date().toISOString(),
+          provider: result.provider,
+        },
+      },
+    },
+    { returnDocument: "after" },
+  ).lean<Order>();
+
+  if (!paid) throw conflict("This order has already been paid");
+  return paid;
+}
+
+/**
+ * The address on the user's latest order, to prefill checkout.
+ *
+ * Orders hold the only saved addresses, since each keeps its own immutable
+ * snapshot. Reading the latest one is enough for a returning customer.
+ */
+export async function getLastShippingAddress(
+  userId: string,
+): Promise<Address | null> {
+  await connectDB();
+
+  if (!Types.ObjectId.isValid(userId)) return null;
+
+  const order = await OrderModel.findOne({ user: userId })
+    .sort({ createdAt: -1, _id: -1 })
+    .select("shippingAddress")
+    .lean<Pick<Order, "shippingAddress">>();
+
+  return order?.shippingAddress ?? null;
+}
+
 /** Lists a user's own orders, newest first. */
 export async function listOrdersForUser(
   userId: string,
@@ -196,9 +353,9 @@ export async function listOrdersForUser(
  * ownership check at all, so any authenticated user could read anyone's order
  * including their shipping address (audit B4).
  *
- * Throws `forbidden` rather than `not_found` only for a genuine owner mismatch;
- * an id that does not exist is still `not_found`, so this cannot be used to
- * probe which order ids are real.
+ * Throws `forbidden` for an owner mismatch and `not_found` for an unknown id, so
+ * the API can tell the two apart. Order pages render both as a 404, and ids are
+ * unguessable ObjectIds, so this reveals nothing useful.
  */
 export async function getOrderForUser(
   orderId: string,
