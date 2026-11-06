@@ -1,5 +1,6 @@
 import Form from "next/form";
 import Link from "next/link";
+import { unstable_rethrow } from "next/navigation";
 
 import { buttonClass, INPUT_CLASS } from "@/components/ui";
 import { logoutAction } from "@/server/auth/actions";
@@ -19,7 +20,7 @@ import { MAX_SEARCH_LENGTH } from "@/server/services/catalog-query";
  * throw here would blank the whole site. If the database is down it degrades to
  * the signed-out view and the page below reports the failure itself.
  */
-async function loadHeaderState() {
+export async function loadHeaderState() {
   try {
     const user = await getCurrentUser();
     if (!user) return { user: null, cartCount: 0 };
@@ -27,6 +28,11 @@ async function loadHeaderState() {
     const cart = await getCart(user.id);
     return { user, cartCount: cart.itemCount };
   } catch (error) {
+    // Next.js signals dynamic rendering by throwing, and reading cookies is how
+    // this header triggers it. Swallowing that signal would let a page be built
+    // as static, with one visitor's header served to everyone.
+    unstable_rethrow(error);
+
     console.error("[header] could not load session:", error);
     return { user: null, cartCount: 0 };
   }
