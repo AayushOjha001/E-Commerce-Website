@@ -235,3 +235,42 @@ collects anything resembling card details.
 **Verified:** 479 tests with `REQUIRE_DB=1`, lint, typecheck. A full purchase ran in Chrome with no
 console errors: guest redirect, sign-up, add to cart, quantity change, address validation, declined
 payment, retry, order history, profile update, wrong and right password change.
+
+**Batch 5 reviewer pass:** `CHANGES_REQUIRED`, and the findings were serious. All high and medium
+items are fixed on the Batch 6 branch. Commit `fix(web): address Batch 5 review findings`.
+
+1. **Stock draining.** Stock is taken at order creation, and nothing ever returned it, so ordering
+   without paying could empty the shop for free. Unpaid orders now expire after 30 minutes (D20),
+   each account may hold 5, and customers can cancel their own. There is no scheduler, so the sweep
+   runs before each checkout and on the admin overview.
+2. **Stranded shoppers.** An unexpected payment failure after the order existed showed an error page,
+   and retrying led to an empty cart with no sign of the order. Every outcome now ends on the order.
+3. **Charged a total never shown.** Nothing compared the total on the button with the charge. Checkout
+   submits it, and the order is refused inside its transaction if it differs.
+4. **Open redirect.** `/<tab>/evil.example` passed the string checks because URL parsers strip tabs.
+   `safeRedirectPath` now asks a real parser whether the origin changes. Tried live: safe.
+5. **Cart trap.** With quantity 5 and stock 2, minus sent 4, which was refused, forever. Lowering is
+   now always allowed, and one press lands within stock.
+6. **Charge before claim.** `payOrder` now claims the order first, with a key per attempt, because a
+   real provider replays stored results for a repeated key (D21).
+7. **Email change needed no password.** Login is by email with no reset flow, so a stolen session
+   could lock the owner out, and a comment claimed otherwise. Now requires the password, in both the
+   form and `PATCH /api/users/profile`, which closes D19.
+
+**Accepted, not changed:** a hard-deleted product leaves a hidden cart line that checkout refuses. The
+app only soft-deletes, and the seed clears carts, so only a direct database edit can reach it.
+
+**Mutation-tested:** eleven protections removed one at a time, covering the items above plus restock on
+cancel and session reissue. The suite failed for all eleven.
+
+### Batch 6 — Admin ✅
+
+- **T6.1 to T6.3** — Product, department and order management APIs. Status moves only along
+  `ORDER_TRANSITIONS`, cancelling restocks in one transaction, and slugs and image URLs are validated.
+  Result: ✅ · commit `4a2a7e6`
+- **T6.4** — Overview, products, departments and orders pages. Result: ✅ · commit `4a2a7e6`
+- **T6.5** — 401 signed out and 404 for customers on all ten admin routes, including a forged role
+  claim. Result: ✅ · commit `4a2a7e6`
+
+**Verified:** 595 tests with `REQUIRE_DB=1`, lint, typecheck. Purchase and admin flows run in Chrome
+with no console errors.
