@@ -1,14 +1,7 @@
 # Blockers — things I need from you
 
-One item needs you: BL-6. The rest have working defaults.
-
----
-
-## 🔴 BL-6 — Everything is waiting on one merge from you
-
-PRs #2 and #3 were merged into side branches, so that work never reached `master`. Every later batch
-targets `master` directly, and each PR contains all the ones before it. **Merging the newest PR alone
-brings everything across**, and the older ones then close themselves. I do not merge to `master`.
+Nothing here is blocking. Every item below has a working default, and each one only needs an
+answer if you want something different.
 
 ---
 
@@ -59,6 +52,10 @@ needed now.
 ---
 
 ## Answered / no longer blocking
+
+- **BL-6 Batches never reached `master` — RESOLVED 2026-11-06.** PRs #2 and #3 had been merged
+  into side branches. PRs #4 to #9 were merged into `master` on the user's instruction, and CI
+  passed there. New PRs target `master` directly.
 
 - **BL-1 `gh` authentication — RESOLVED 2026-09-29.** `gh auth status` now shows
   `Logged in to github.com account AayushOjha001`, and **PR #1 "Batch 1: Foundation" is open**
