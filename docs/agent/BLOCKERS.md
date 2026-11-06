@@ -4,6 +4,15 @@ Nothing here is currently blocking. Items are ordered by when they will actually
 
 ---
 
+## 🔴 BL-6 — Batches 2 and 3 never reached `master` (needs one merge from you)
+
+PR #2 was based on `agent/batch-1-foundation` and PR #3 on `agent/batch-2-data-layer`, so merging
+them landed the work on those side branches, not on `master`. That is why `master` still looks like
+it is at the starting phase. All later batches are branched from that tip and target `master`
+directly, so merging the newest open PR brings everything across. I do not merge to `master` myself.
+
+---
+
 ## 🟡 BL-2 — Payment provider choice (needed in Batch 5, not before)
 
 You said "payments in test/mock mode", and the old code has no payment dependency at all
