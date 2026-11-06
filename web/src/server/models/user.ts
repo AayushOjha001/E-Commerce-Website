@@ -19,6 +19,20 @@ export type User = {
    */
   password: string;
   role: UserRole;
+  /**
+   * Bumped whenever the password changes, to invalidate existing sessions.
+   *
+   * Sessions are stateless JWTs, so a password change would otherwise leave
+   * every token issued before it valid for its full remaining lifetime — a
+   * token stolen beforehand would survive the very action taken to stop it.
+   * A token carries the version it was minted with and is rejected once it
+   * no longer matches.
+   *
+   * A counter rather than a `passwordChangedAt` timestamp: a JWT's `iat` has
+   * whole-second resolution, so a timestamp cannot tell a token issued just
+   * before a change from one issued just after, within the same second.
+   */
+  tokenVersion: number;
   createdAt: Date;
   updatedAt: Date;
 };
@@ -62,6 +76,12 @@ const userSchema = new Schema<User, UserModelType, UserMethods>(
       required: [true, "Password is required"],
       select: false,
     },
+    tokenVersion: {
+      type: Number,
+      required: true,
+      default: 0,
+      select: false,
+    },
     // The legacy schema used `isAdmin: Boolean`. An enum leaves room for more
     // roles without another migration, and reads better at call sites than a
     // bare boolean. Legacy `isAdmin: true` maps to `role: "admin"`.
@@ -92,6 +112,12 @@ userSchema.pre("save", async function hashPassword() {
   }
 
   this.password = await bcrypt.hash(this.password, BCRYPT_ROUNDS);
+
+  // Only on a *change*, not on creation: a brand-new account has no older
+  // sessions to invalidate, and starting everyone at version 0 keeps it simple.
+  if (!this.isNew) {
+    this.tokenVersion = (this.tokenVersion ?? 0) + 1;
+  }
 });
 
 userSchema.methods.matchPassword = async function matchPassword(

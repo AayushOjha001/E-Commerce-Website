@@ -11,6 +11,7 @@ export type ServiceErrorCode =
   | "not_found"
   | "validation"
   | "conflict"
+  | "unauthenticated"
   | "forbidden"
   | "out_of_stock";
 
@@ -41,6 +42,14 @@ export const validationFailed = (
 
 export const conflict = (message: string) =>
   new ServiceError("conflict", message);
+
+/**
+ * Not signed in at all — distinct from `forbidden`, which means signed in but
+ * not allowed. Without the distinction a client cannot tell "log in" from
+ * "you will never be allowed", and both would answer 403.
+ */
+export const unauthenticated = (message = "You must be signed in") =>
+  new ServiceError("unauthenticated", message);
 
 /**
  * Used when a user tries to reach something that is not theirs.
