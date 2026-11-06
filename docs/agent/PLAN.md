@@ -75,13 +75,13 @@ all pass; `/api/health` reports a live DB; `backend/` + `frontend/` still run.
 - [x] **T4.6** — Tests: list/filter/pagination service, detail 404 path.
 
 ## Batch 5 — Cart, checkout, orders
-- [ ] **T5.1** — Expose the cart service (built in T2.4) via `GET/POST /api/cart` and `DELETE /api/cart/[productId]` (ports **R8–R10**). Validation, stock checks and correct qty incrementing are already done and tested.
-- [ ] **T5.2** — Cart page with server data + optimistic updates (replaces **P3**, the `"No items yet."` stub).
-- [ ] **T5.3** — Checkout page/flow on top of the pricing service (built in T2.4, which already computes all totals server-side — **B3** fixed there).
-- [ ] **T5.4** — `POST /api/orders` route handler over `createOrderFromCart` (built in T2.4: transactional, atomic stock decrement — **B2**/**B13** fixed and race-tested there).
-- [ ] **T5.5** — Mock payment provider behind a `PaymentProvider` interface; mark order paid (BL-2).
-- [ ] **T5.6** — `GET /api/orders` and `GET /api/orders/[id]` route handlers over the order service (ownership check + **B4** IDOR fix already implemented and mutation-tested in T2.4).
-- [ ] **T5.7** — Pages: checkout, order confirmation, order history, order detail.
+- [x] **T5.1** — Expose the cart service (built in T2.4) via `GET/POST /api/cart` and `DELETE /api/cart/[productId]` (ports **R8–R10**). Validation, stock checks and correct qty incrementing are already done and tested.
+- [x] **T5.2** — Cart page with server data + optimistic updates (replaces **P3**, the `"No items yet."` stub).
+- [x] **T5.3** — Checkout page/flow on top of the pricing service (built in T2.4, which already computes all totals server-side — **B3** fixed there).
+- [x] **T5.4** — `POST /api/orders` route handler over `createOrderFromCart` (built in T2.4: transactional, atomic stock decrement — **B2**/**B13** fixed and race-tested there).
+- [x] **T5.5** — Mock payment provider behind a `PaymentProvider` interface; mark order paid (BL-2).
+- [x] **T5.6** — `GET /api/orders` and `GET /api/orders/[id]` route handlers over the order service (ownership check + **B4** IDOR fix already implemented and mutation-tested in T2.4).
+- [x] **T5.7** — Pages: checkout, order confirmation, order history, order detail.
 - [ ] **T5.8** — Tests: stock rejection, total correctness, IDOR is denied, empty-cart checkout rejected.
 
 ## Batch 6 — Admin

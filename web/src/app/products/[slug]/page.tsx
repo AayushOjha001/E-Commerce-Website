@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { cache } from "react";
 
+import { AddToCart } from "@/components/add-to-cart";
 import { ProductArt } from "@/components/product-art";
 import { ProductGrid } from "@/components/product-tile";
 import { departmentClass } from "@/lib/department";
@@ -145,6 +146,14 @@ export default async function ProductPage(props: PageProps<"/products/[slug]">) 
               </p>
             ) : null}
           </div>
+
+          {product.countInStock > 0 ? (
+            <AddToCart
+              productId={product.id}
+              countInStock={product.countInStock}
+              returnTo={`/products/${product.slug}`}
+            />
+          ) : null}
 
           <p className="mt-6 max-w-[62ch] text-lg leading-relaxed">
             {product.description}

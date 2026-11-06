@@ -1,10 +1,19 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 
+import { PasswordForm, ProfileForm } from "@/components/account-forms";
+import { OrderStatusPill } from "@/components/order-status";
+import { LINK_CLASS, PageTitle } from "@/components/ui";
+import { formatDate, formatPrice } from "@/lib/format";
 import { requireUserForPage } from "@/server/auth/session";
+import { listOrdersForUser, orderNumber } from "@/server/services/orders";
 
 export const metadata: Metadata = {
   title: "Your account",
 };
+
+/** How many orders the account page previews before linking to the full list. */
+const RECENT_ORDERS = 3;
 
 /**
  * The account page.
@@ -17,29 +26,70 @@ export const metadata: Metadata = {
  */
 export default async function AccountPage() {
   const user = await requireUserForPage("/account");
+  const orders = await listOrdersForUser(user.id);
 
   return (
-    <main className="mx-auto w-full max-w-2xl px-4 py-12">
-      <h1 className="mb-6 text-2xl font-bold tracking-tight">Your account</h1>
+    <main className="mx-auto w-full max-w-[1400px] px-4 pt-6 pb-12 sm:px-6">
+      <PageTitle>Your account</PageTitle>
 
-      <dl className="divide-y divide-black/10 rounded-lg border border-black/10 dark:divide-white/15 dark:border-white/15">
-        <div className="flex justify-between gap-4 px-4 py-3">
-          <dt className="text-black/60 dark:text-white/60">Name</dt>
-          <dd className="font-medium">{user.name}</dd>
-        </div>
-        <div className="flex justify-between gap-4 px-4 py-3">
-          <dt className="text-black/60 dark:text-white/60">Email</dt>
-          <dd className="font-medium">{user.email}</dd>
-        </div>
-        <div className="flex justify-between gap-4 px-4 py-3">
-          <dt className="text-black/60 dark:text-white/60">Role</dt>
-          <dd className="font-medium">{user.role}</dd>
-        </div>
-      </dl>
+      <div className="mt-8 grid items-start gap-10 lg:grid-cols-2">
+        <section aria-labelledby="recent-orders">
+          <h2 id="recent-orders" className="text-xl font-bold">
+            Recent orders
+          </h2>
 
-      <p className="mt-6 text-sm text-black/60 dark:text-white/60">
-        Order history arrives in a later batch.
-      </p>
+          {orders.length === 0 ? (
+            <p className="mt-2">
+              No orders yet.{" "}
+              <Link href="/products" className={LINK_CLASS}>
+                Browse all products
+              </Link>
+            </p>
+          ) : (
+            <>
+              <ul className="mt-2 divide-y-2 divide-ink/10">
+                {orders.slice(0, RECENT_ORDERS).map((order) => {
+                  const id = String(order._id);
+
+                  return (
+                    <li key={id}>
+                      <Link
+                        href={`/account/orders/${id}`}
+                        className="group flex flex-wrap items-center justify-between gap-x-4 py-3"
+                      >
+                        <span>
+                          <span className="font-semibold underline-offset-4 group-hover:underline">
+                            Order {orderNumber(id)}
+                          </span>
+                          <span className="block text-sm text-ink-soft">
+                            {formatDate(order.createdAt)}
+                          </span>
+                        </span>
+                        <span className="flex items-center gap-3">
+                          <OrderStatusPill status={order.status} />
+                          <span className="price font-bold">
+                            {formatPrice(order.totalPrice)}
+                          </span>
+                        </span>
+                      </Link>
+                    </li>
+                  );
+                })}
+              </ul>
+              <p className="mt-3">
+                <Link href="/account/orders" className={LINK_CLASS}>
+                  See all orders
+                </Link>
+              </p>
+            </>
+          )}
+        </section>
+
+        <div className="space-y-10">
+          <ProfileForm name={user.name} email={user.email} />
+          <PasswordForm />
+        </div>
+      </div>
     </main>
   );
 }
