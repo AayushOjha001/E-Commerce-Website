@@ -1,6 +1,6 @@
 import Link from "next/link";
 
-import { formatPrice } from "@/lib/format";
+import { formatPriceInText } from "@/lib/format";
 import { departmentClass } from "@/lib/department";
 import { listCategories } from "@/server/services/categories";
 import {
@@ -54,8 +54,8 @@ export async function SiteFooter() {
         <div>
           <h2 className="font-semibold">Shipping</h2>
           <p className="mt-3 text-paper/80">
-            Free on orders over {formatPrice(FREE_SHIPPING_THRESHOLD)}. Otherwise
-            a flat {formatPrice(SHIPPING_FLAT_RATE)}.
+            Free on orders over {formatPriceInText(FREE_SHIPPING_THRESHOLD)}.
+            Otherwise a flat {formatPriceInText(SHIPPING_FLAT_RATE)}.
           </p>
         </div>
       </div>

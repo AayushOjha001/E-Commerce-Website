@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { formatDate, formatPrice, pluralise } from "./format";
+import { formatDate, formatPrice, formatPriceInText, pluralise } from "./format";
 
 describe("formatPrice", () => {
   it("always shows cents", () => {
@@ -10,6 +10,13 @@ describe("formatPrice", () => {
 
   it("groups thousands", () => {
     expect(formatPrice(1299)).toBe("$1,299.00");
+  });
+});
+
+describe("formatPriceInText", () => {
+  it("drops cents only when there are none", () => {
+    expect(formatPriceInText(100)).toBe("$100");
+    expect(formatPriceInText(9.99)).toBe("$9.99");
   });
 });
 

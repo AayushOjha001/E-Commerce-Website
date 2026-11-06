@@ -116,9 +116,12 @@ export async function SiteHeader() {
               >
                 Sign in
               </Link>
-              <Link href="/register" className={buttonClass({ size: "sm" })}>
-                Register
-              </Link>
+              {/* Wrapped, because `hidden` loses to the button's own display. */}
+              <span className="hidden sm:inline">
+                <Link href="/register" className={buttonClass({ size: "sm" })}>
+                  Register
+                </Link>
+              </span>
             </>
           )}
         </div>

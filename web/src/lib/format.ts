@@ -8,7 +8,14 @@ export function formatPrice(amount: number): string {
   return priceFormatter.format(amount);
 }
 
-const dateFormatter = new Intl.DateTimeFormat("en-US", {
+/** Formats an amount for a sentence: "$100", but "$9.99" when it has cents. */
+export function formatPriceInText(amount: number): string {
+  return Number.isInteger(amount)
+    ? `$${amount.toLocaleString("en-US")}`
+    : formatPrice(amount);
+}
+
+const dateFormatter =new Intl.DateTimeFormat("en-US", {
   year: "numeric",
   month: "short",
   day: "numeric",
