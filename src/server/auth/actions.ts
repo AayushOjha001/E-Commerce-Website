@@ -1,5 +1,6 @@
 "use server";
 
+import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 
 import { safeRedirectPath } from "@/lib/redirect";
@@ -7,7 +8,8 @@ import { safeRedirectPath } from "@/lib/redirect";
 import { loginSchema, registerSchema } from "@/server/auth/schemas";
 import { clearSessionCookie, startSession } from "@/server/auth/session";
 import { isServiceError } from "@/server/services/errors";
-import { verifyCredentials } from "@/server/auth/verify-credentials";
+import { attemptLogin } from "@/server/auth/login";
+import { clientIp } from "@/server/auth/rate-limit";
 import { registerCustomer, toPublicUser } from "@/server/services/users";
 
 /**
@@ -57,7 +59,18 @@ export async function loginAction(
 
   // One message and the same work for both cases, so the form cannot be used to
   // discover which emails have accounts.
-  const user = await verifyCredentials(parsed.data.email, parsed.data.password);
+  let user;
+  try {
+    user = await attemptLogin(
+      parsed.data.email,
+      parsed.data.password,
+      clientIp(await headers()),
+    );
+  } catch (error) {
+    const mapped = fieldErrorsFrom(error);
+    if (mapped) return { ...mapped, values };
+    throw error;
+  }
 
   if (!user) {
     return { error: "Invalid email or password", values };

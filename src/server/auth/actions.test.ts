@@ -15,6 +15,7 @@ const jar = await vi.hoisted(async () => {
 
 vi.mock("next/headers", () => ({
   cookies: async () => jar.cookieStore,
+  headers: async () => new Headers({ "x-forwarded-for": "203.0.113.5" }),
 }));
 
 /**

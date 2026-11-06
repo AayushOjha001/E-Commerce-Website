@@ -1,15 +1,14 @@
 # Blockers — things I need from you
 
-Nothing here is currently blocking. Items are ordered by when they will actually bite.
+One item needs you: BL-6. The rest have working defaults.
 
 ---
 
-## 🔴 BL-6 — Batches 2 and 3 never reached `master` (needs one merge from you)
+## 🔴 BL-6 — Everything is waiting on one merge from you
 
-PR #2 was based on `agent/batch-1-foundation` and PR #3 on `agent/batch-2-data-layer`, so merging
-them landed the work on those side branches, not on `master`. That is why `master` still looks like
-it is at the starting phase. All later batches are branched from that tip and target `master`
-directly, so merging the newest open PR brings everything across. I do not merge to `master` myself.
+PRs #2 and #3 were merged into side branches, so that work never reached `master`. Every later batch
+targets `master` directly, and each PR contains all the ones before it. **Merging the newest PR alone
+brings everything across**, and the older ones then close themselves. I do not merge to `master`.
 
 ---
 

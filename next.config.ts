@@ -1,7 +1,37 @@
 import type { NextConfig } from "next";
 
+/**
+ * Sent on every response.
+ *
+ * The policy has no `script-src`: Next.js needs inline scripts for hydration, so
+ * restricting scripts means a per-request nonce. These directives still stop the
+ * page being framed, a `<base>` tag rerouting links, and forms posting elsewhere.
+ *
+ * CORS (audit B14) needs nothing here. The legacy `cors()` allowed every origin,
+ * and sending no CORS headers at all leaves the API same-origin.
+ */
+const securityHeaders = [
+  { key: "X-Content-Type-Options", value: "nosniff" },
+  { key: "X-Frame-Options", value: "DENY" },
+  { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
+  {
+    key: "Permissions-Policy",
+    value: "camera=(), microphone=(), geolocation=()",
+  },
+  {
+    key: "Strict-Transport-Security",
+    value: "max-age=63072000; includeSubDomains",
+  },
+  {
+    key: "Content-Security-Policy",
+    value:
+      "base-uri 'self'; form-action 'self'; frame-ancestors 'none'; object-src 'none'",
+  },
+];
+
 const nextConfig: NextConfig = {
-  /* config options here */
+  poweredByHeader: false,
+  headers: async () => [{ source: "/:path*", headers: securityHeaders }],
 };
 
 export default nextConfig;
